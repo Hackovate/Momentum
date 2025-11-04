@@ -59,7 +59,7 @@ export function Skills() {
     }
   };
 
-  const handleToggleMilestone = async (skillId: string, milestoneId: string) => {
+  const handleToggleMilestone = async (_skillId: string, milestoneId: string) => {
     try {
       await skillsAPI.toggleMilestone(milestoneId);
       await loadData();

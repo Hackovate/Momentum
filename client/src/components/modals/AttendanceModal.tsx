@@ -261,9 +261,10 @@ export function AttendanceModal({ open, onClose, courseId, courseName, onAttenda
                       </span>
                     </div>
                     <div className="mt-2 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                      {/* @eslint-disable-next-line no-inline-styles */}
                       <div
-                        className={`h-full ${stats.attendancePercentage >= 75 ? 'bg-green-500' : stats.attendancePercentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                        style={{ width: `${Math.min(stats.attendancePercentage, 100)}%` }}
+                        className={`h-full transition-all ${stats.attendancePercentage >= 75 ? 'bg-green-500' : stats.attendancePercentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                        style={{ width: `${Math.min(stats.attendancePercentage, 100)}%` } as React.CSSProperties}
                       />
                     </div>
                   </div>

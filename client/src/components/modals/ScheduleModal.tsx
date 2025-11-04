@@ -15,7 +15,7 @@ interface ScheduleModalProps {
   courseName: string;
 }
 
-export function ScheduleModal({ open, onClose, onSave, schedule, mode, courseId, courseName }: ScheduleModalProps) {
+export function ScheduleModal({ open, onClose, onSave, schedule, mode, courseName }: ScheduleModalProps) {
   const [formData, setFormData] = useState({
     day: 'Mon',
     time: '09:00',
@@ -62,7 +62,7 @@ export function ScheduleModal({ open, onClose, onSave, schedule, mode, courseId,
           {/* Day */}
           <div>
             <Label htmlFor="day">Day *</Label>
-            <Select value={formData.day} onValueChange={(value) => setFormData({ ...formData, day: value })}>
+            <Select value={formData.day} onValueChange={(value: string) => setFormData({ ...formData, day: value })}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -93,7 +93,7 @@ export function ScheduleModal({ open, onClose, onSave, schedule, mode, courseId,
           {/* Type */}
           <div>
             <Label htmlFor="type">Type</Label>
-            <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+            <Select value={formData.type} onValueChange={(value: string) => setFormData({ ...formData, type: value })}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

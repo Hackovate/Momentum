@@ -16,7 +16,7 @@ interface AssignmentModalProps {
   courseName: string;
 }
 
-export function AssignmentModal({ open, onClose, onSave, assignment, mode, courseId, courseName }: AssignmentModalProps) {
+export function AssignmentModal({ open, onClose, onSave, assignment, mode, courseName }: AssignmentModalProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -98,7 +98,7 @@ export function AssignmentModal({ open, onClose, onSave, assignment, mode, cours
           {/* Status */}
           <div>
             <Label htmlFor="status">Status</Label>
-            <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+            <Select value={formData.status} onValueChange={(value: string) => setFormData({ ...formData, status: value })}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

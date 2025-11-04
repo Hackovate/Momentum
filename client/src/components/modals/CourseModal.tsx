@@ -112,7 +112,7 @@ export function CourseModal({ open, onClose, onSave, course, mode }: CourseModal
             {/* Semester */}
             <div>
               <Label htmlFor="semester">Semester</Label>
-              <Select value={formData.semester} onValueChange={(value) => setFormData({ ...formData, semester: value })}>
+              <Select value={formData.semester} onValueChange={(value: string) => setFormData({ ...formData, semester: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -132,7 +132,7 @@ export function CourseModal({ open, onClose, onSave, course, mode }: CourseModal
             {/* Year */}
             <div>
               <Label htmlFor="year">Year</Label>
-              <Select value={formData.year} onValueChange={(value) => setFormData({ ...formData, year: value })}>
+              <Select value={formData.year} onValueChange={(value: string) => setFormData({ ...formData, year: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -148,7 +148,7 @@ export function CourseModal({ open, onClose, onSave, course, mode }: CourseModal
             {/* Status */}
             <div className="col-span-2">
               <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+              <Select value={formData.status} onValueChange={(value: string) => setFormData({ ...formData, status: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -181,7 +181,7 @@ export function CourseModal({ open, onClose, onSave, course, mode }: CourseModal
                 max={100}
                 step={1}
                 value={[formData.progress]}
-                onValueChange={(value) => setFormData({ ...formData, progress: value[0] })}
+                onValueChange={(value: number[]) => setFormData({ ...formData, progress: value[0] })}
                 className="mt-2"
               />
             </div>
@@ -195,7 +195,7 @@ export function CourseModal({ open, onClose, onSave, course, mode }: CourseModal
                 max={100}
                 step={1}
                 value={[formData.attendance]}
-                onValueChange={(value) => setFormData({ ...formData, attendance: value[0] })}
+                onValueChange={(value: number[]) => setFormData({ ...formData, attendance: value[0] })}
                 className="mt-2"
               />
             </div>

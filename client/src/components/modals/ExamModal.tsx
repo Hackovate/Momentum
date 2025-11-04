@@ -65,7 +65,7 @@ export function ExamModal({ open, onClose, onSave, exam, mode, courses, selected
           {mode === 'create' && (
             <div>
               <Label htmlFor="courseId">Course *</Label>
-              <Select value={formData.courseId} onValueChange={(value) => setFormData({ ...formData, courseId: value })}>
+              <Select value={formData.courseId} onValueChange={(value: string) => setFormData({ ...formData, courseId: value })}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a course" />
                 </SelectTrigger>
@@ -106,7 +106,7 @@ export function ExamModal({ open, onClose, onSave, exam, mode, courses, selected
           {/* Type */}
           <div>
             <Label htmlFor="type">Exam Type</Label>
-            <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+            <Select value={formData.type} onValueChange={(value: string) => setFormData({ ...formData, type: value })}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
