@@ -113,8 +113,20 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
           }))
         });
       } else if (mode === 'edit' && skill) {
-        // Update skill
+        // Update skill basic info
         await skillsAPI.update(skill.id, formData);
+        
+        // Handle new milestones (those without an id)
+        const newMilestones = milestones.filter(m => !m.id);
+        if (newMilestones.length > 0) {
+          for (const milestone of newMilestones) {
+            await skillsAPI.addMilestone(skill.id, {
+              name: milestone.name,
+              completed: milestone.completed || false,
+              order: milestones.indexOf(milestone)
+            });
+          }
+        }
       }
 
       onSave();
@@ -134,8 +146,29 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
     }
   };
 
-  const handleRemoveMilestone = (index: number) => {
-    setMilestones(milestones.filter((_, i) => i !== index));
+  const handleRemoveMilestone = async (index: number) => {
+    const milestone = milestones[index];
+    
+    // If editing and milestone has an id, delete from backend
+    if (mode === 'edit' && milestone.id) {
+      if (!confirm('Delete this milestone?')) return;
+      
+      try {
+        await skillsAPI.deleteMilestone(milestone.id);
+        setMilestones(milestones.filter((_, i) => i !== index));
+        
+        // Trigger parent refresh to update progress
+        if (onSave) {
+          onSave();
+        }
+      } catch (error) {
+        console.error('Error deleting milestone:', error);
+        alert('Failed to delete milestone');
+      }
+    } else {
+      // Just remove from local state for new milestones
+      setMilestones(milestones.filter((_, i) => i !== index));
+    }
   };
 
   const handleToggleMilestone = async (index: number) => {
