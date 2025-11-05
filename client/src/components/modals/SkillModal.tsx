@@ -146,8 +146,14 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
         const updatedMilestones = [...milestones];
         updatedMilestones[index].completed = !updatedMilestones[index].completed;
         setMilestones(updatedMilestones);
+        
+        // Trigger parent refresh to update progress display
+        if (onSave) {
+          onSave();
+        }
       } catch (error) {
         console.error('Error toggling milestone:', error);
+        alert('Failed to toggle milestone');
       }
     } else {
       // Toggle locally for new milestones

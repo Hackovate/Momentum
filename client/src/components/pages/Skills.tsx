@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Target, TrendingUp, Sparkles, ExternalLink, Pencil, Trash2, Check } from 'lucide-react';
+import { Plus, Target, TrendingUp, Sparkles, Pencil, Trash2, Check } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
@@ -56,15 +56,6 @@ export function Skills() {
     } catch (error) {
       console.error('Error deleting skill:', error);
       alert('Failed to delete skill');
-    }
-  };
-
-  const handleToggleMilestone = async (_skillId: string, milestoneId: string) => {
-    try {
-      await skillsAPI.toggleMilestone(milestoneId);
-      await loadData();
-    } catch (error) {
-      console.error('Error toggling milestone:', error);
     }
   };
 
@@ -222,139 +213,127 @@ export function Skills() {
             </Button>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {skills.map((skill) => (
-              <Card key={skill.id} className="p-4 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="text-gray-900 dark:text-gray-100 mb-0.5">{skill.name}</h3>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{skill.category}</Badge>
-                      {skill.aiGenerated && (
-                        <Badge variant="secondary" className="text-xs">
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          AI Generated
-                        </Badge>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+            {skills.map((skill) => {
+              const completedMilestonesCount = skill.milestones?.filter((m: any) => m.completed).length || 0;
+              const totalMilestonesCount = skill.milestones?.length || 0;
+              const calculatedProgress = totalMilestonesCount > 0 
+                ? Math.round((completedMilestonesCount / totalMilestonesCount) * 100) 
+                : 0;
+
+              return (
+                <Card 
+                  key={skill.id} 
+                  className="p-4 border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow cursor-pointer group"
+                  onClick={() => handleEditSkill(skill)}
+                >
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-gray-900 dark:text-gray-100 font-semibold mb-1.5 truncate group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                        {skill.name}
+                      </h3>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs">{skill.category}</Badge>
+                        <Badge variant="secondary" className="text-xs capitalize">{skill.level}</Badge>
+                        {skill.aiGenerated && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            AI
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          handleEditSkill(skill);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          handleDeleteSkill(skill.id);
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Goal Statement */}
+                  {skill.goalStatement && (
+                    <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50 rounded-lg">
+                      <p className="text-sm text-gray-900 dark:text-gray-100 line-clamp-2">{skill.goalStatement}</p>
+                    </div>
+                  )}
+
+                  {/* Progress */}
+                  <div className="mb-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs text-muted-foreground">Progress</span>
+                      <span className="text-xs font-semibold text-foreground">{calculatedProgress}%</span>
+                    </div>
+                    <Progress value={calculatedProgress} className="h-2" />
+                  </div>
+
+                  {/* Stats Row */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-3 pb-3 border-b border-border/60">
+                    <div className="flex items-center gap-3">
+                      {totalMilestonesCount > 0 && (
+                        <span className="flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" />
+                          {completedMilestonesCount}/{totalMilestonesCount}
+                        </span>
+                      )}
+                      {skill.learningResources?.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          📚 {skill.learningResources.length}
+                        </span>
                       )}
                     </div>
+                    {skill.timeSpent && skill.timeSpent !== '0h' && (
+                      <span className="flex items-center gap-1">
+                        ⏱️ {skill.timeSpent}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className={`px-3 py-1 bg-gradient-to-r ${skill.gradient} rounded-lg`}>
-                      <p className="text-white text-sm">{Math.round(skill.progress)}%</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => handleEditSkill(skill)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => handleDeleteSkill(skill.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
 
-                {/* Goal Statement */}
-                {skill.goalStatement && (
-                  <div className="mb-3 p-2.5 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-                    <p className="text-blue-600 dark:text-blue-400 text-xs mb-0.5">Goal</p>
-                    <p className="text-gray-900 dark:text-gray-100 text-sm">{skill.goalStatement}</p>
-                  </div>
-                )}
-
-                {/* Timeline Info */}
-                {(skill.durationMonths || skill.estimatedHours || skill.startDate || skill.endDate) && (
-                  <div className="mb-3 flex flex-wrap gap-2 text-xs text-gray-600 dark:text-gray-400">
+                  {/* Timeline Info - Compact */}
+                  <div className="flex flex-wrap gap-1.5 text-xs">
                     {skill.durationMonths && (
-                      <span className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                        📅 {skill.durationMonths} months
+                      <span className="px-2 py-0.5 bg-muted rounded text-muted-foreground">
+                        📅 {skill.durationMonths}mo
                       </span>
                     )}
                     {skill.estimatedHours && (
-                      <span className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                        ⏱️ {skill.estimatedHours}h estimated
+                      <span className="px-2 py-0.5 bg-muted rounded text-muted-foreground">
+                        ⏱️ {skill.estimatedHours}h
                       </span>
                     )}
                     {skill.startDate && (
-                      <span className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                        🚀 Started {new Date(skill.startDate).toLocaleDateString()}
+                      <span className="px-2 py-0.5 bg-muted rounded text-muted-foreground">
+                        � {new Date(skill.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     )}
                     {skill.endDate && (
-                      <span className="flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded">
-                        🎯 Target {new Date(skill.endDate).toLocaleDateString()}
+                      <span className="px-2 py-0.5 bg-muted rounded text-muted-foreground">
+                        🎯 {new Date(skill.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                     )}
                   </div>
-                )}
-
-                {/* Progress Bar */}
-                <div className="mb-3">
-                  <Progress value={skill.progress} className="h-2" />
-                </div>
-
-                {/* Milestones */}
-                {skill.milestones && skill.milestones.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-gray-700 dark:text-gray-300 text-sm mb-2">Milestones</p>
-                    <div className="space-y-1.5">
-                      {skill.milestones.map((milestone: any, index: number) => (
-                        <div key={milestone.id || index} className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleToggleMilestone(skill.id, milestone.id)}
-                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                              milestone.completed 
-                                ? 'bg-green-500 border-green-500' 
-                                : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600'
-                            }`}
-                          >
-                            {milestone.completed && (
-                              <Check className="w-3 h-3 text-white" />
-                            )}
-                          </button>
-                          <span className={`text-sm ${milestone.completed ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-gray-100'}`}>
-                            {milestone.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Next Task */}
-                {skill.nextTask && (
-                  <div className="p-2.5 bg-violet-50 dark:bg-violet-950 border border-violet-200 dark:border-violet-800 rounded-lg mb-3">
-                    <p className="text-violet-600 dark:text-violet-400 text-xs mb-0.5">Next Task</p>
-                    <p className="text-gray-900 dark:text-gray-100 text-sm">{skill.nextTask}</p>
-                  </div>
-                )}
-
-                {/* Footer Stats */}
-                <div className="flex items-center justify-between pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
-                    <span>📚 {skill.resourceCount || skill.learningResources?.length || 0} resources</span>
-                    <span>⏱️ {skill.timeSpent}</span>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="ghost" 
-                    className="text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 gap-1"
-                    onClick={() => handleEditSkill(skill)}
-                  >
-                    View
-                    <ExternalLink className="w-3 h-3" />
-                  </Button>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
