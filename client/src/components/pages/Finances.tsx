@@ -42,7 +42,7 @@ export function Finances() {
   const currentCategories = newExpense.type === 'income' ? incomeCategories : expenseCategories;
 
   // Calculate dynamic values based on actual transactions
-  const currentSpending = expenses
+  const totalExpenses = expenses
     .filter(e => e.type === 'expense')
     .reduce((sum, e) => sum + e.amount, 0);
 
@@ -50,17 +50,18 @@ export function Finances() {
     .filter(e => e.type === 'income')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  // Available balance = Total Income - Total Spending
-  const availableBalance = totalIncome - currentSpending;
+  // Available balance = Total Income - Total Expenses
+  const actualBalance = totalIncome - totalExpenses;
 
-  // Current savings (actual money saved)
-  const currentSavings = Math.max(0, availableBalance);
+  // Net savings (actual money saved)
+  const netSavings = Math.max(0, actualBalance);
+  const currentSavings = netSavings;
 
   // Savings progress
   const savingsProgress = savingsGoal > 0 ? (currentSavings / savingsGoal) * 100 : 0;
 
   // Budget progress (spending vs budget)
-  const budgetProgress = monthlyBudget > 0 ? (currentSpending / monthlyBudget) * 100 : 0;
+  const budgetProgress = monthlyBudget > 0 ? (totalExpenses / monthlyBudget) * 100 : 0;
 
   // Calculate category breakdown
   const categoryBreakdown = expenseCategories.map(cat => {
@@ -70,7 +71,7 @@ export function Finances() {
     return {
       category: cat.name,
       amount: total,
-      percentage: currentSpending > 0 ? Math.round((total / currentSpending) * 100) : 0,
+      percentage: totalExpenses > 0 ? Math.round((total / totalExpenses) * 100) : 0,
       icon: cat.icon,
       color: cat.color,
     };
@@ -217,13 +218,13 @@ export function Finances() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm mb-0.5">Available Balance</p>
-              <p className="text-foreground text-3xl">${availableBalance.toFixed(0)}</p>
+              <p className="text-foreground text-3xl">${actualBalance.toFixed(0)}</p>
               <div className={`flex items-center gap-1 text-sm mt-0.5 ${
-                availableBalance >= 0 
+                actualBalance >= 0 
                   ? 'text-green-600 dark:text-green-400' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
-                {availableBalance >= 0 ? (
+                {actualBalance >= 0 ? (
                   <>
                     <TrendingUp className="w-3 h-3" />
                     <span>Remaining</span>
