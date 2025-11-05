@@ -238,25 +238,6 @@ export function Journal() {
           })
         )}
       </div>
-
-      {/* Reflection Prompts */}
-      <Card className="p-4 border-border bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-primary/20">
-        <h3 className="text-foreground mb-3">💭 Reflection Prompts</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="p-3 bg-background/50 rounded-lg">
-            <p className="text-foreground text-sm">What made you smile today?</p>
-          </div>
-          <div className="p-3 bg-background/50 rounded-lg">
-            <p className="text-foreground text-sm">What did you learn about yourself?</p>
-          </div>
-          <div className="p-3 bg-background/50 rounded-lg">
-            <p className="text-foreground text-sm">What are you grateful for?</p>
-          </div>
-          <div className="p-3 bg-background/50 rounded-lg">
-            <p className="text-foreground text-sm">What's one thing you'd like to improve?</p>
-          </div>
-        </div>
-      </Card>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, TrendingUp, TrendingDown, Wallet, ShoppingBag, Home, Utensils, GraduationCap, Heart, Trash2 } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, Wallet, ShoppingBag, Home, Utensils, GraduationCap, Heart, Trash2, Briefcase } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
@@ -7,12 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { ImageWithFallback } from '../figma/ImageWithFallback';
 import { useApp } from '../../lib/AppContext';
 import { toast } from 'sonner';
 
 export function Finances() {
-  const { expenses, addExpense, deleteExpense, monthlyBudget, savingsGoal, currentSavings } = useApp();
+  const { expenses, addExpense, deleteExpense, monthlyBudget, savingsGoal, updateBudget, updateSavings } = useApp();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newExpense, setNewExpense] = useState({
     name: '',
@@ -21,7 +20,7 @@ export function Finances() {
     type: 'expense' as 'expense' | 'income',
   });
 
-  const categories = [
+  const expenseCategories = [
     { name: 'Food', icon: Utensils, color: 'from-orange-500 to-red-500' },
     { name: 'Education', icon: GraduationCap, color: 'from-blue-500 to-cyan-500' },
     { name: 'Shopping', icon: ShoppingBag, color: 'from-violet-500 to-purple-500' },
@@ -30,17 +29,41 @@ export function Finances() {
     { name: 'Other', icon: Wallet, color: 'from-gray-500 to-slate-500' },
   ];
 
-  // Calculate current month spending
+  const incomeCategories = [
+    { name: 'Salary', icon: Wallet, color: 'from-green-500 to-emerald-500' },
+    { name: 'Freelance', icon: Briefcase, color: 'from-blue-500 to-cyan-500' },
+    { name: 'Scholarship', icon: GraduationCap, color: 'from-violet-500 to-purple-500' },
+    { name: 'Investment', icon: TrendingUp, color: 'from-indigo-500 to-blue-500' },
+    { name: 'Gift', icon: Heart, color: 'from-pink-500 to-rose-500' },
+    { name: 'Other', icon: Wallet, color: 'from-gray-500 to-slate-500' },
+  ];
+
+  const allCategories = [...expenseCategories, ...incomeCategories];
+  const currentCategories = newExpense.type === 'income' ? incomeCategories : expenseCategories;
+
+  // Calculate dynamic values based on actual transactions
   const currentSpending = expenses
     .filter(e => e.type === 'expense')
     .reduce((sum, e) => sum + e.amount, 0);
 
-  const currentIncome = expenses
+  const totalIncome = expenses
     .filter(e => e.type === 'income')
     .reduce((sum, e) => sum + e.amount, 0);
 
+  // Available balance = Total Income - Total Spending
+  const availableBalance = totalIncome - currentSpending;
+
+  // Current savings (actual money saved)
+  const currentSavings = Math.max(0, availableBalance);
+
+  // Savings progress
+  const savingsProgress = savingsGoal > 0 ? (currentSavings / savingsGoal) * 100 : 0;
+
+  // Budget progress (spending vs budget)
+  const budgetProgress = monthlyBudget > 0 ? (currentSpending / monthlyBudget) * 100 : 0;
+
   // Calculate category breakdown
-  const categoryBreakdown = categories.map(cat => {
+  const categoryBreakdown = expenseCategories.map(cat => {
     const total = expenses
       .filter(e => e.category === cat.name && e.type === 'expense')
       .reduce((sum, e) => sum + e.amount, 0);
@@ -75,9 +98,6 @@ export function Finances() {
     toast.success('Transaction deleted!');
   };
 
-  const savingsProgress = (currentSavings / savingsGoal) * 100;
-  const budgetProgress = (currentSpending / monthlyBudget) * 100;
-
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -101,7 +121,14 @@ export function Finances() {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="type">Type</Label>
-                <Select value={newExpense.type} onValueChange={(value: any) => setNewExpense({ ...newExpense, type: value })}>
+                <Select 
+                  value={newExpense.type} 
+                  onValueChange={(value: 'expense' | 'income') => {
+                    // Reset category to first option when type changes
+                    const newCategory = value === 'income' ? 'Salary' : 'Food';
+                    setNewExpense({ ...newExpense, type: value, category: newCategory });
+                  }}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -122,12 +149,12 @@ export function Finances() {
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <Select value={newExpense.category} onValueChange={(value) => setNewExpense({ ...newExpense, category: value })}>
+                <Select value={newExpense.category} onValueChange={(value: string) => setNewExpense({ ...newExpense, category: value })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {categories.map(cat => (
+                    {currentCategories.map(cat => (
                       <SelectItem key={cat.name} value={cat.name}>{cat.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -153,12 +180,25 @@ export function Finances() {
       </div>
 
       {/* Top Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Card className="p-4 border-border bg-card">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-muted-foreground text-sm mb-0.5">Monthly Spending</p>
-              <p className="text-foreground text-3xl">${currentSpending}</p>
+              <p className="text-muted-foreground text-sm mb-0.5">Total Income</p>
+              <p className="text-foreground text-3xl">${totalIncome.toFixed(0)}</p>
+              <p className="text-green-600 dark:text-green-400 text-sm mt-0.5">This month</p>
+            </div>
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-white" />
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-4 border-border bg-card">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-muted-foreground text-sm mb-0.5">Total Expenses</p>
+              <p className="text-foreground text-3xl">${totalExpenses.toFixed(0)}</p>
               <p className="text-muted-foreground text-sm mt-0.5">of ${monthlyBudget} budget</p>
             </div>
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
@@ -177,10 +217,23 @@ export function Finances() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-muted-foreground text-sm mb-0.5">Available Balance</p>
-              <p className="text-foreground text-3xl">${Math.max(0, monthlyBudget - currentSpending)}</p>
-              <div className="flex items-center gap-1 text-green-600 dark:text-green-400 text-sm mt-0.5">
-                <TrendingDown className="w-3 h-3" />
-                <span>Remaining</span>
+              <p className="text-foreground text-3xl">${availableBalance.toFixed(0)}</p>
+              <div className={`flex items-center gap-1 text-sm mt-0.5 ${
+                availableBalance >= 0 
+                  ? 'text-green-600 dark:text-green-400' 
+                  : 'text-red-600 dark:text-red-400'
+              }`}>
+                {availableBalance >= 0 ? (
+                  <>
+                    <TrendingUp className="w-3 h-3" />
+                    <span>Remaining</span>
+                  </>
+                ) : (
+                  <>
+                    <TrendingDown className="w-3 h-3" />
+                    <span>Deficit</span>
+                  </>
+                )}
               </div>
             </div>
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
@@ -263,7 +316,7 @@ export function Finances() {
               <p className="text-muted-foreground text-center py-4">No transactions yet</p>
             ) : (
               expenses.slice(0, 10).map((transaction) => {
-                const category = categories.find(c => c.category === transaction.category);
+                const category = allCategories.find(c => c.name === transaction.category);
                 const Icon = category?.icon || Wallet;
                 const color = category?.color || 'from-gray-500 to-slate-500';
                 
@@ -310,11 +363,23 @@ export function Finances() {
         <div className="flex items-start gap-3">
           <div className="text-3xl">💡</div>
           <div className="flex-1">
-            <h3 className="text-foreground mb-1.5">Smart Saving Tip</h3>
+            <h3 className="text-foreground mb-1.5">Smart Financial Insight</h3>
             <p className="text-foreground/80 mb-2 text-sm">
-              {budgetProgress > 80 
-                ? "You're close to your budget limit. Consider reviewing your spending categories to identify areas where you can cut back."
-                : "Great job staying within budget! Keep tracking your expenses to maintain this healthy financial habit."}
+              {(() => {
+                if (actualBalance < 0) {
+                  return "⚠️ Your expenses exceed your income. Consider reducing spending or finding additional income sources.";
+                } else if (budgetProgress > 80) {
+                  return "You're close to your budget limit. Review your spending categories to identify areas where you can cut back.";
+                } else if (netSavings > savingsGoal * 0.5) {
+                  return `🎉 Excellent progress! You're ${Math.round(savingsProgress)}% toward your savings goal. Keep up the great work!`;
+                } else if (totalIncome > 0 && totalExpenses === 0) {
+                  return "Great start! Now track your expenses to understand where your money goes.";
+                } else if (totalIncome === 0 && totalExpenses > 0) {
+                  return "Add your income sources to get a complete picture of your finances.";
+                } else {
+                  return "Great job managing your finances! Keep tracking both income and expenses to maintain this healthy financial habit.";
+                }
+              })()}
             </p>
             <Button variant="link" className="p-0 h-auto text-primary">Learn more →</Button>
           </div>

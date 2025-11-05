@@ -4,7 +4,7 @@
   "description": "Backend API for AI Student Life Dashboard",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon src/server.ts",
+    "server": "nodemon src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",

@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { Plus, TrendingUp, Moon, Dumbbell, Book, Droplets, CheckCircle2, Trash2 } from 'lucide-react';
+import { Plus, TrendingUp, CheckCircle2, Trash2, Edit } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
-import { Switch } from '../ui/switch';
-import { Badge } from '../ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useApp } from '../../lib/AppContext';
 import { toast } from 'sonner';
 
 export function Lifestyle() {
-  const { habits, toggleHabit, addHabit } = useApp();
+  const { habits, toggleHabit, addHabit, deleteHabit, updateHabit } = useApp();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
   const [newHabit, setNewHabit] = useState({
     name: '',
     target: '',
@@ -20,16 +22,53 @@ export function Lifestyle() {
     color: 'from-blue-500 to-cyan-500',
     icon: '💪',
   });
+  const [editHabit, setEditHabit] = useState({
+    name: '',
+    target: '',
+    time: '',
+    color: 'from-blue-500 to-cyan-500',
+    icon: '💪',
+  });
 
-  const weeklyProgress = [
-    { day: "Mon", completed: 4, total: 5 },
-    { day: "Tue", completed: 5, total: 5 },
-    { day: "Wed", completed: 3, total: 5 },
-    { day: "Thu", completed: 4, total: 5 },
-    { day: "Fri", completed: 5, total: 5 },
-    { day: "Sat", completed: 4, total: 5 },
-    { day: "Sun", completed: 3, total: 5 }
-  ];
+  // Calculate dynamic weekly progress
+  const getWeeklyProgress = () => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const today = new Date();
+    const currentDayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Adjust to make Monday = 0
+    const adjustedDayIndex = currentDayIndex === 0 ? 6 : currentDayIndex - 1;
+    
+    return days.map((day, index) => {
+      // Calculate the date for this day of the week
+      const daysFromMonday = index - adjustedDayIndex;
+      const date = new Date(today);
+      date.setDate(today.getDate() + daysFromMonday);
+      const dateString = date.toISOString().split('T')[0];
+      
+      // Count completed habits for this day
+      let completed = 0;
+      const total = habits.length;
+      
+      habits.forEach(habit => {
+        const history = habit.completionHistory || [];
+        const dayEntry = history.find(entry => entry.date === dateString);
+        if (dayEntry && dayEntry.completed) {
+          completed++;
+        }
+      });
+      
+      return {
+        day,
+        completed,
+        total,
+        date: dateString,
+        isToday: index === adjustedDayIndex
+      };
+    });
+  };
+
+  const weeklyProgress = getWeeklyProgress();
 
   const completedHabits = habits.filter(h => h.completed).length;
   const wellnessScore = Math.round((completedHabits / habits.length) * 100) || 0;
@@ -37,6 +76,46 @@ export function Lifestyle() {
   const handleToggleHabit = (id: string) => {
     toggleHabit(id);
     toast.success('Habit updated!');
+  };
+
+  const handleDeleteClick = (id: string) => {
+    setSelectedHabitId(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (selectedHabitId) {
+      deleteHabit(selectedHabitId);
+      toast.success('Habit deleted!');
+      setIsDeleteDialogOpen(false);
+      setSelectedHabitId(null);
+    }
+  };
+
+  const handleEditClick = (habit: any) => {
+    setSelectedHabitId(habit.id);
+    setEditHabit({
+      name: habit.name,
+      target: habit.target,
+      time: habit.time,
+      color: habit.color,
+      icon: habit.icon,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSave = () => {
+    if (!editHabit.name || !editHabit.target || !editHabit.time) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (selectedHabitId) {
+      updateHabit(selectedHabitId, editHabit);
+      setIsEditDialogOpen(false);
+      setSelectedHabitId(null);
+      toast.success('Habit updated successfully!');
+    }
   };
 
   const handleAddHabit = () => {
@@ -217,55 +296,178 @@ export function Lifestyle() {
             habits.map((habit) => (
               <Card 
                 key={habit.id} 
-                className={`p-3 border-border bg-card hover:shadow-lg transition-all ${
+                className={`p-4 border-border bg-card hover:shadow-lg transition-all group ${
                   habit.completed ? 'border-green-200 dark:border-green-800 bg-green-50/30 dark:bg-green-950/30' : ''
                 }`}
               >
-                <div className="flex items-start justify-between mb-2">
-                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${habit.color} flex items-center justify-center text-white text-xl`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${habit.color} flex items-center justify-center text-white text-2xl`}>
                     {habit.icon}
                   </div>
-                  <Switch 
-                    checked={habit.completed} 
-                    onCheckedChange={() => handleToggleHabit(habit.id)}
-                  />
-                </div>
-                <h3 className="text-foreground mb-0.5">{habit.name}</h3>
-                <p className="text-muted-foreground text-sm mb-2">{habit.target} • {habit.time}</p>
-                <div className="flex items-center justify-between pt-2 border-t border-border">
                   <div className="flex items-center gap-1">
-                    <span className="text-orange-500 text-sm">🔥</span>
-                    <span className="text-sm text-muted-foreground">{habit.streak} day streak</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                      onClick={() => handleEditClick(habit)}
+                    >
+                      <Edit className="w-4 h-4 text-primary" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                      onClick={() => handleDeleteClick(habit.id)}
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
                   </div>
-                  {habit.completed && (
-                    <Badge variant="secondary" className="gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Done
-                    </Badge>
-                  )}
                 </div>
+                <h3 className="text-foreground font-semibold mb-1">{habit.name}</h3>
+                <p className="text-muted-foreground text-sm mb-3">{habit.target} • {habit.time}</p>
+                
+                <div className="flex items-center justify-between pt-3 border-t border-border mb-3">
+                  <div className="flex items-center gap-1">
+                    <span className="text-orange-500 text-base">🔥</span>
+                    <span className="text-sm text-muted-foreground font-medium">{habit.streak} day streak</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => handleToggleHabit(habit.id)}
+                  className={`w-full ${
+                    habit.completed 
+                      ? 'bg-green-500 hover:bg-green-600 text-white' 
+                      : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                  }`}
+                >
+                  {habit.completed ? (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Completed Today
+                    </>
+                  ) : (
+                    <>
+                      Check In
+                    </>
+                  )}
+                </Button>
               </Card>
             ))
           )}
         </div>
       </div>
 
+      {/* Edit Habit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Habit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-habit-name">Habit Name</Label>
+              <Input
+                id="edit-habit-name"
+                placeholder="e.g., Morning Workout"
+                value={editHabit.name}
+                onChange={(e) => setEditHabit({ ...editHabit, name: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-target">Target</Label>
+              <Input
+                id="edit-target"
+                placeholder="e.g., 30 minutes daily"
+                value={editHabit.target}
+                onChange={(e) => setEditHabit({ ...editHabit, target: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-time">Time</Label>
+              <Input
+                id="edit-time"
+                placeholder="e.g., 7:00 AM"
+                value={editHabit.time}
+                onChange={(e) => setEditHabit({ ...editHabit, time: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label>Icon</Label>
+              <div className="grid grid-cols-4 gap-2 mt-2">
+                {iconOptions.map((icon) => (
+                  <Button
+                    key={icon.value}
+                    type="button"
+                    variant={editHabit.icon === icon.value ? 'default' : 'outline'}
+                    className="text-2xl h-12"
+                    onClick={() => setEditHabit({ ...editHabit, icon: icon.value })}
+                  >
+                    {icon.value}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditSave}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this habit and all its history. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Weekly Overview */}
       <Card className="p-4 border-border bg-card">
         <h2 className="text-foreground mb-3">Weekly Progress</h2>
         <div className="grid grid-cols-7 gap-2">
-          {weeklyProgress.map((day, index) => (
-            <div key={index} className="text-center">
-              <p className="text-muted-foreground text-sm mb-2">{day.day}</p>
-              <div className="h-24 bg-muted rounded-lg flex flex-col justify-end overflow-hidden">
-                <div 
-                  className="bg-primary transition-all"
-                  style={{ height: `${(day.completed / day.total) * 100}%` }}
-                ></div>
+          {weeklyProgress.map((day, index) => {
+            const percentage = day.total > 0 ? (day.completed / day.total) * 100 : 0;
+            return (
+              <div key={index} className="text-center">
+                <p className={`text-sm mb-2 ${day.isToday ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                  {day.day}
+                </p>
+                <div className={`h-24 bg-muted rounded-lg flex flex-col justify-end overflow-hidden ${
+                  day.isToday ? 'ring-2 ring-primary' : ''
+                }`}>
+                  <div 
+                    className={`transition-all ${
+                      percentage === 100 
+                        ? 'bg-green-500' 
+                        : percentage >= 50 
+                          ? 'bg-primary' 
+                          : 'bg-orange-400'
+                    }`}
+                    style={{ height: `${percentage}%` }}
+                  ></div>
+                </div>
+                <p className={`text-sm mt-1 ${day.isToday ? 'text-primary font-semibold' : 'text-foreground'}`}>
+                  {day.completed}/{day.total}
+                </p>
+                {day.isToday && (
+                  <p className="text-xs text-primary mt-0.5">Today</p>
+                )}
               </div>
-              <p className="text-foreground text-sm mt-1">{day.completed}/{day.total}</p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Card>
     </div>

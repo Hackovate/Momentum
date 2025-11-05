@@ -22,12 +22,12 @@ interface SidebarProps {
 export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'assistant', label: 'Personalized Assistant', icon: Sparkles },
+    { id: 'assistant', label: 'Assistant', icon: Sparkles },
     { id: 'planner', label: 'Daily Planner', icon: Calendar },
     { id: 'academics', label: 'Academics', icon: GraduationCap },
     { id: 'skills', label: 'Skills', icon: Lightbulb },
     { id: 'finances', label: 'Finances', icon: Wallet },
-    { id: 'lifestyle', label: 'Lifestyle & Habits', icon: Heart },
+    { id: 'lifestyle', label: 'Habit', icon: Heart },
     { id: 'journal', label: 'Journal', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   ];

@@ -51,6 +51,7 @@ interface Habit {
   completed: boolean;
   color: string;
   icon: string;
+  completionHistory?: { date: string; completed: boolean }[];
 }
 
 interface JournalEntry {
@@ -86,6 +87,8 @@ interface AppContextType {
   deleteExpense: (id: string) => void;
   toggleHabit: (id: string) => void;
   addHabit: (habit: Omit<Habit, 'id'>) => void;
+  updateHabit: (id: string, updates: Partial<Omit<Habit, 'id' | 'streak' | 'completed' | 'completionHistory'>>) => void;
+  deleteHabit: (id: string) => void;
   addJournalEntry: (entry: Omit<JournalEntry, 'id'>) => void;
   updateJournalEntry: (id: string, updates: Partial<JournalEntry>) => void;
   deleteJournalEntry: (id: string) => void;
@@ -255,10 +258,53 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setHabits(habits.map(habit => {
       if (habit.id === id) {
         const newCompleted = !habit.completed;
+        const today = new Date().toISOString().split('T')[0];
+        const history = habit.completionHistory || [];
+        
+        // Update or add today's completion status
+        const existingEntryIndex = history.findIndex(entry => entry.date === today);
+        let newHistory;
+        if (existingEntryIndex >= 0) {
+          newHistory = [...history];
+          newHistory[existingEntryIndex] = { date: today, completed: newCompleted };
+        } else {
+          newHistory = [...history, { date: today, completed: newCompleted }];
+        }
+        
+        // Calculate actual streak from history
+        const calculateStreak = (completionHistory: { date: string; completed: boolean }[]) => {
+          if (completionHistory.length === 0) return 0;
+          
+          // Sort by date descending
+          const sorted = [...completionHistory].sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          
+          let streak = 0;
+          const today = new Date();
+          
+          for (let i = 0; i < sorted.length; i++) {
+            const entryDate = new Date(sorted[i].date);
+            const daysDiff = Math.floor((today.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            // Check if this is consecutive (today or yesterday from previous)
+            if (daysDiff === i && sorted[i].completed) {
+              streak++;
+            } else {
+              break;
+            }
+          }
+          
+          return streak;
+        };
+        
+        const newStreak = calculateStreak(newHistory);
+        
         return {
           ...habit,
           completed: newCompleted,
-          streak: newCompleted ? habit.streak + 1 : habit.streak
+          streak: newStreak,
+          completionHistory: newHistory
         };
       }
       return habit;
@@ -266,8 +312,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const addHabit = (habit: Omit<Habit, 'id'>) => {
-    const newHabit = { ...habit, id: Date.now().toString() };
+    const newHabit = { ...habit, id: Date.now().toString(), completionHistory: [] };
     setHabits([...habits, newHabit]);
+  };
+
+  const updateHabit = (id: string, updates: Partial<Omit<Habit, 'id' | 'streak' | 'completed' | 'completionHistory'>>) => {
+    setHabits(habits.map(habit => 
+      habit.id === id ? { ...habit, ...updates } : habit
+    ));
+  };
+
+  const deleteHabit = (id: string) => {
+    setHabits(habits.filter(habit => habit.id !== id));
   };
 
   // Journal operations
@@ -320,6 +376,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         deleteExpense,
         toggleHabit,
         addHabit,
+        updateHabit,
+        deleteHabit,
         addJournalEntry,
         updateJournalEntry,
         deleteJournalEntry,
