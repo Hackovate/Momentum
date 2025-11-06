@@ -1,15 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-interface Task {
-  id: string;
-  title: string;
-  time: string;
-  duration: string;
-  priority: 'high' | 'medium' | 'low';
-  status: 'todo' | 'inProgress' | 'done';
-  date: string;
-}
-
 interface Subject {
   id: string;
   name: string;
@@ -69,7 +59,6 @@ interface JournalEntry {
 }
 
 interface AppContextType {
-  tasks: Task[];
   subjects: Subject[];
   skills: Skill[];
   expenses: Expense[];
@@ -78,9 +67,6 @@ interface AppContextType {
   monthlyBudget: number;
   savingsGoal: number;
   currentSavings: number;
-  addTask: (task: Omit<Task, 'id'>) => void;
-  updateTask: (id: string, updates: Partial<Task>) => void;
-  deleteTask: (id: string) => void;
   addSubject: (subject: Omit<Subject, 'id'>) => void;
   updateSubject: (id: string, updates: Partial<Subject>) => void;
   deleteSubject: (id: string) => void;
@@ -104,7 +90,6 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -119,7 +104,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const savedData = localStorage.getItem('studentLifeData');
     if (savedData) {
       const data = JSON.parse(savedData);
-      setTasks(data.tasks || []);
       setSubjects(data.subjects || []);
       setSkills(data.skills || []);
       setExpenses(data.expenses || []);
@@ -137,7 +121,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Save data to localStorage whenever it changes
   useEffect(() => {
     const data = {
-      tasks,
       subjects,
       skills,
       expenses,
@@ -148,17 +131,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       currentSavings,
     };
     localStorage.setItem('studentLifeData', JSON.stringify(data));
-  }, [tasks, subjects, skills, expenses, habits, journalEntries, monthlyBudget, savingsGoal, currentSavings]);
+  }, [subjects, skills, expenses, habits, journalEntries, monthlyBudget, savingsGoal, currentSavings]);
 
   const initializeDefaultData = () => {
-    // Initialize default tasks
-    setTasks([
-      { id: '1', title: "Complete Data Structures Assignment", time: "2:00 PM", duration: "2h", priority: "high", status: "todo", date: new Date().toISOString() },
-      { id: '2', title: "Read Chapter 7 - Operating Systems", time: "4:30 PM", duration: "1h", priority: "medium", status: "todo", date: new Date().toISOString() },
-      { id: '3', title: "Team Meeting for Web Dev Project", time: "12:00 PM", duration: "1h", priority: "high", status: "inProgress", date: new Date().toISOString() },
-      { id: '4', title: "Morning Study Session - Mathematics", time: "8:00 AM", duration: "2h", priority: "high", status: "done", date: new Date().toISOString() },
-    ]);
-
     // Initialize default subjects
     setSubjects([
       { id: '1', name: "Data Structures & Algorithms", code: "CS201", progress: 75, grade: "A", color: "from-blue-500 to-cyan-500", nextClass: "Mon 11:00 AM", assignments: 2 },
@@ -200,20 +175,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       { id: '2', name: "Daily Exercise", target: "30 minutes", time: "6:30 AM", streak: 8, completed: true, color: "from-green-500 to-emerald-500", icon: "💪" },
       { id: '3', name: "Reading Time", target: "30 minutes", time: "9:00 PM", streak: 15, completed: false, color: "from-violet-500 to-purple-500", icon: "📚" },
     ]);
-  };
-
-  // Task operations
-  const addTask = (task: Omit<Task, 'id'>) => {
-    const newTask = { ...task, id: Date.now().toString() };
-    setTasks([...tasks, newTask]);
-  };
-
-  const updateTask = (id: string, updates: Partial<Task>) => {
-    setTasks(tasks.map(task => task.id === id ? { ...task, ...updates } : task));
-  };
-
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter(task => task.id !== id));
   };
 
   // Subject operations
@@ -358,7 +319,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        tasks,
         subjects,
         skills,
         expenses,
@@ -367,9 +327,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         monthlyBudget,
         savingsGoal,
         currentSavings,
-        addTask,
-        updateTask,
-        deleteTask,
         addSubject,
         updateSubject,
         deleteSubject,

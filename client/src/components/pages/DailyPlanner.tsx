@@ -1,46 +1,41 @@
-import { useState } from 'react';
-import { Plus, RefreshCw, CheckCircle2, Circle, Clock, Trash2, Edit } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Sparkles, CheckCircle2, Circle, Clock, Trash2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
-import { Checkbox } from '../ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useApp } from '../../lib/AppContext';
+import { Textarea } from '../ui/textarea';
+import { tasksAPI } from '../../lib/api';
 import { toast } from 'sonner';
 
 export function DailyPlanner() {
-  const { tasks, addTask, updateTask, deleteTask } = useApp();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newTask, setNewTask] = useState({
     title: '',
-    time: '',
-    duration: '',
+    description: '',
+    dueDate: '',
     priority: 'medium' as 'high' | 'medium' | 'low',
   });
 
-  const schedule = [
-    { time: "08:00 AM", activity: "Morning Study - Mathematics", type: "study", done: true },
-    { time: "10:00 AM", activity: "Break & Breakfast", type: "break", done: true },
-    { time: "11:00 AM", activity: "Data Structures Lecture", type: "class", done: true },
-    { time: "12:00 PM", activity: "Team Meeting", type: "meeting", done: false },
-    { time: "01:00 PM", activity: "Lunch Break", type: "break", done: false },
-    { time: "02:00 PM", activity: "Assignment Work", type: "study", done: false },
-    { time: "04:00 PM", activity: "Reading - OS Chapter 7", type: "study", done: false },
-    { time: "05:30 PM", activity: "Break", type: "break", done: false },
-    { time: "06:00 PM", activity: "Skill Development", type: "skill", done: false },
-    { time: "08:00 PM", activity: "Dinner & Relax", type: "break", done: false }
-  ];
+  // Fetch tasks from database
+  useEffect(() => {
+    loadTasks();
+  }, []);
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'study': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800';
-      case 'class': return 'bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800';
-      case 'meeting': return 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-800';
-      case 'skill': return 'bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800';
-      case 'break': return 'bg-muted text-muted-foreground border-border';
-      default: return 'bg-muted text-muted-foreground border-border';
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      const fetchedTasks = await tasksAPI.getAll();
+      setTasks(fetchedTasks);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+      toast.error('Failed to load tasks');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -53,41 +48,61 @@ export function DailyPlanner() {
     }
   };
 
-  const handleAddTask = () => {
-    if (!newTask.title || !newTask.time || !newTask.duration) {
-      toast.error('Please fill in all fields');
+  const handleAddTask = async () => {
+    if (!newTask.title) {
+      toast.error('Please enter a task title');
       return;
     }
 
-    addTask({
-      ...newTask,
-      status: 'todo',
-      date: new Date().toISOString(),
-    });
+    try {
+      await tasksAPI.create({
+        title: newTask.title,
+        description: newTask.description || null,
+        dueDate: newTask.dueDate || null,
+        priority: newTask.priority,
+        status: 'pending'
+      });
 
-    setNewTask({ title: '', time: '', duration: '', priority: 'medium' });
-    setIsAddDialogOpen(false);
-    toast.success('Task added successfully!');
+      setNewTask({ title: '', description: '', dueDate: '', priority: 'medium' });
+      setIsAddDialogOpen(false);
+      toast.success('Task added successfully!');
+      await loadTasks();
+    } catch (error) {
+      console.error('Error adding task:', error);
+      toast.error('Failed to add task');
+    }
   };
 
-  const handleToggleTask = (taskId: string, currentStatus: string) => {
-    const statusOrder = ['todo', 'inProgress', 'done'];
+  const handleToggleTask = async (taskId: string, currentStatus: string) => {
+    const statusOrder = ['pending', 'in-progress', 'completed'];
     const currentIndex = statusOrder.indexOf(currentStatus);
     const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
     
-    updateTask(taskId, { status: nextStatus as any });
-    toast.success(`Task moved to ${nextStatus === 'inProgress' ? 'In Progress' : nextStatus === 'done' ? 'Completed' : 'To Do'}`);
+    try {
+      await tasksAPI.update(taskId, { status: nextStatus });
+      toast.success(`Task moved to ${nextStatus === 'in-progress' ? 'In Progress' : nextStatus === 'completed' ? 'Completed' : 'Pending'}`);
+      await loadTasks();
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to update task');
+    }
   };
 
-  const handleDeleteTask = (taskId: string) => {
-    deleteTask(taskId);
-    toast.success('Task deleted successfully!');
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await tasksAPI.delete(taskId);
+      toast.success('Task deleted successfully!');
+      await loadTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
+    }
   };
 
   const groupedTasks = {
-    todo: tasks.filter(t => t.status === 'todo'),
-    inProgress: tasks.filter(t => t.status === 'inProgress'),
-    done: tasks.filter(t => t.status === 'done'),
+    pending: tasks.filter(t => t.status === 'pending'),
+    inProgress: tasks.filter(t => t.status === 'in-progress'),
+    completed: tasks.filter(t => t.status === 'completed'),
   };
 
   const TaskSection = ({ title, tasks: sectionTasks, icon: Icon }: any) => (
@@ -104,23 +119,23 @@ export function DailyPlanner() {
       ) : (
         sectionTasks.map((task: any) => (
           <div key={task.id} className="flex items-start gap-2.5 p-3 bg-card border border-border rounded-lg hover:shadow-md transition-shadow group">
-            <Checkbox 
-              checked={task.status === 'done'}
-              onCheckedChange={() => handleToggleTask(task.id, task.status)}
-              className="mt-1" 
-            />
-            <div className="flex-1">
+            <div 
+              className="flex-1 cursor-pointer"
+              onClick={() => handleToggleTask(task.id, task.status)}
+            >
               <div className="flex items-center gap-2 mb-0.5">
                 <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`}></div>
-                <p className={`text-foreground ${task.status === 'done' ? 'line-through opacity-60' : ''}`}>{task.title}</p>
+                <p className={`text-foreground ${task.status === 'completed' ? 'line-through opacity-60' : ''}`}>{task.title}</p>
               </div>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
+              {task.description && (
+                <p className="text-sm text-muted-foreground mb-1">{task.description}</p>
+              )}
+              {task.dueDate && (
+                <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Clock className="w-3 h-3" />
-                  {task.time}
-                </span>
-                <span>{task.duration}</span>
-              </div>
+                  {new Date(task.dueDate).toLocaleDateString()}
+                </div>
+              )}
             </div>
             <Button
               variant="ghost"
@@ -145,9 +160,9 @@ export function DailyPlanner() {
           <p className="text-muted-foreground">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Rebalance Plan
+          <Button variant="outline" className="gap-2" disabled>
+            <Sparkles className="w-4 h-4" />
+            Generate Your Day
           </Button>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -163,7 +178,7 @@ export function DailyPlanner() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="title">Task Title</Label>
+                  <Label htmlFor="title">Task Title *</Label>
                   <Input
                     id="title"
                     placeholder="Enter task title"
@@ -172,21 +187,22 @@ export function DailyPlanner() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="time">Time</Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={newTask.time}
-                    onChange={(e) => setNewTask({ ...newTask, time: e.target.value })}
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Enter task description"
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                    rows={3}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="duration">Duration</Label>
+                  <Label htmlFor="dueDate">Due Date</Label>
                   <Input
-                    id="duration"
-                    placeholder="e.g., 2h, 30min"
-                    value={newTask.duration}
-                    onChange={(e) => setNewTask({ ...newTask, duration: e.target.value })}
+                    id="dueDate"
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
                   />
                 </div>
                 <div>
@@ -213,11 +229,17 @@ export function DailyPlanner() {
       </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-        {/* Task List */}
-        <div className="lg:col-span-3 space-y-3">
+      {loading ? (
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading tasks...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
           <Card className="p-4 border-border bg-card">
-            <TaskSection title="To Do" tasks={groupedTasks.todo} icon={Circle} />
+            <TaskSection title="Pending" tasks={groupedTasks.pending} icon={Circle} />
           </Card>
           
           <Card className="p-4 border-border bg-accent border-primary/20">
@@ -225,30 +247,10 @@ export function DailyPlanner() {
           </Card>
           
           <Card className="p-4 border-border bg-accent border-primary/30">
-            <TaskSection title="Completed" tasks={groupedTasks.done} icon={CheckCircle2} />
+            <TaskSection title="Completed" tasks={groupedTasks.completed} icon={CheckCircle2} />
           </Card>
         </div>
-
-        {/* Schedule Timeline */}
-        <div className="lg:col-span-2">
-          <Card className="p-4 border-border bg-card sticky top-24">
-            <h2 className="text-foreground mb-3">AI Generated Schedule</h2>
-            <div className="space-y-1.5 max-h-[600px] overflow-y-auto">
-              {schedule.map((item, index) => (
-                <div key={index} className={`p-2 border rounded-lg transition-all ${getTypeColor(item.type)} ${item.done ? 'opacity-50' : ''}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs mb-0.5">{item.time}</p>
-                      <p className="text-sm">{item.activity}</p>
-                    </div>
-                    {item.done && <CheckCircle2 className="w-4 h-4" />}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
