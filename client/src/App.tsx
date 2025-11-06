@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './components/theme-provider';
 import { AppProvider } from './lib/AppContext';
 import { AuthProvider, useAuth } from './lib/useAuth';
@@ -16,11 +17,10 @@ import { Journal } from './components/pages/Journal';
 import { Analytics } from './components/pages/Analytics';
 import AuthPage from './components/pages/AuthPage';
 
-function AppContent() {
+// Protected Route wrapper
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
-  const [activeSection, setActiveSection] = useState('dashboard');
 
-  // Show loading while checking authentication
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -32,10 +32,16 @@ function AppContent() {
     );
   }
 
-  // Show auth page if not authenticated
   if (!isAuthenticated) {
-    return <AuthPage />;
+    return <Navigate to="/auth" replace />;
   }
+
+  return <>{children}</>;
+}
+
+// Main App layout
+function MainLayout() {
+  const [activeSection, setActiveSection] = useState('dashboard');
 
   const renderContent = () => {
     switch (activeSection) {
@@ -78,6 +84,34 @@ function AppContent() {
         </main>
       </div>
     </div>
+  );
+}
+
+// App content with routing
+function AppContent() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Landing redirects to auth */}
+        <Route path="/" element={<Navigate to="/auth" replace />} />
+        
+        {/* Auth page */}
+        <Route path="/auth" element={<AuthPage />} />
+        
+        {/* Main dashboard (protected) */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <MainLayout />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Redirect to auth by default */}
+        <Route path="*" element={<Navigate to="/auth" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

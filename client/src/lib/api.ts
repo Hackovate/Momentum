@@ -537,6 +537,47 @@ export const lifestyleAPI = {
   },
 };
 
+// Onboarding API
+export const onboardingAPI = {
+  start: async () => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        question: string;
+        completed: boolean;
+        next_step: string;
+      };
+    }>('/onboarding/start', {
+      method: 'POST',
+    });
+  },
+
+  submitAnswer: async (answer: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        question?: string;
+        completed: boolean;
+        structured_data?: any;
+        next_step?: string;
+      };
+    }>('/onboarding/answer', {
+      method: 'POST',
+      body: JSON.stringify({ answer }),
+    });
+  },
+
+  getStatus: async () => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        completed: boolean;
+        userData: any;
+      };
+    }>('/onboarding/status');
+  },
+};
+
 export default {
   auth: authAPI,
   academics: academicsAPI,
@@ -548,4 +589,5 @@ export default {
   skills: skillsAPI,
   lifestyle: lifestyleAPI,
   courses: coursesAPI,
+  onboarding: onboardingAPI,
 };

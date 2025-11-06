@@ -13,6 +13,18 @@ model User {
   password          String
   firstName         String?
   lastName          String?
+  
+  // Education level information (Bangladeshi context)
+  educationLevel    String?            // "school", "college", "university", "graduate"
+  institution       String?            // Name of school/college/university
+  class             String?            // For school: "6", "7", "8", "9", "10", "11", "12"
+  group             String?            // For school (9-12): "science", "commerce", "arts"
+                                       // For college: "science", "commerce", "arts"
+  year              Int?               // For college: 1, 2 | For university: 1, 2, 3, 4
+  major             String?            // For university: field of study
+  board             String?            // For school/college: "Dhaka", "Chittagong", "Rajshahi", etc.
+  expectedGraduation DateTime?         // Expected graduation date
+  
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   academics         Academic[]
