@@ -17,7 +17,7 @@ export const removeAuthToken = (): void => {
 };
 
 // Generic API request handler
-const apiRequest = async <T>(
+export const apiRequest = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> => {
@@ -537,6 +537,140 @@ export const lifestyleAPI = {
   },
 };
 
+// Onboarding API
+export const onboardingAPI = {
+  start: async () => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        question: string;
+        completed: boolean;
+        next_step: string;
+      };
+    }>('/onboarding/start', {
+      method: 'POST',
+    });
+  },
+
+  submitAnswer: async (answer: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        question?: string;
+        completed: boolean;
+        structured_data?: any;
+        next_step?: string;
+      };
+    }>('/onboarding/answer', {
+      method: 'POST',
+      body: JSON.stringify({ answer }),
+    });
+  },
+
+  getStatus: async () => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        completed: boolean;
+        userData: any;
+      };
+    }>('/onboarding/status');
+  },
+
+  submit: async (data: any) => {
+    return apiRequest<{
+      success: boolean;
+      message: string;
+    }>('/onboarding/submit', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+// AI Chat API
+export const aiChatAPI = {
+  chat: async (message: string, conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        response: string;
+        conversation_id?: string;
+      };
+    }>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversation_history: conversationHistory || [] }),
+    });
+  },
+};
+
+// Analytics API
+export const analyticsAPI = {
+  getAll: async () => {
+    return apiRequest<{
+      monthlyStats: {
+        tasksCompleted: number;
+        studyHours: number;
+        savingsRate: number;
+        wellnessScore: number;
+        skillProgress: number;
+      };
+      subjectPerformance: Array<{
+        id: string;
+        name: string;
+        code: string;
+        progress: number;
+        grade: string;
+        score: number;
+        trend: 'up' | 'down' | 'neutral';
+        assignments: number;
+        nextClass: string;
+      }>;
+      skills: Array<{
+        id: string;
+        name: string;
+        category: string;
+        progress: number;
+        gradient: string;
+        milestones: Array<{ name: string; completed: boolean }>;
+        nextTask: string;
+        resources: number;
+        timeSpent: string;
+      }>;
+      expenses: Array<{
+        id: string;
+        category: string;
+        amount: number;
+        description: string;
+        date: string;
+        type: 'expense' | 'income';
+        paymentMethod?: string;
+        recurring?: boolean;
+        frequency?: string;
+      }>;
+      expenseCategories: Array<{
+        category: string;
+        amount: number;
+        percentage: number;
+      }>;
+      weeklyTaskCompletion: Array<{
+        week: string;
+        completed: number;
+        total: number;
+      }>;
+      dailyTaskCompletion: { [key: string]: { completed: number; total: number } };
+      achievements: Array<{
+        id: number;
+        title: string;
+        description: string;
+        icon: string;
+      }>;
+      totalIncome: number;
+      totalExpenses: number;
+    }>('/analytics');
+  },
+};
+
 export default {
   auth: authAPI,
   academics: academicsAPI,
@@ -548,4 +682,6 @@ export default {
   skills: skillsAPI,
   lifestyle: lifestyleAPI,
   courses: coursesAPI,
+  onboarding: onboardingAPI,
+  analytics: analyticsAPI,
 };
