@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import axios from 'axios';
+import { startOnboardingAI, answerOnboardingAI, ingestDocs } from '../services/ai.service';
 
 const prisma = new PrismaClient();
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 // Start onboarding conversation (for AI - kept for future use)
 export const startOnboarding = async (req: Request, res: Response) => {
@@ -16,15 +15,13 @@ export const startOnboarding = async (req: Request, res: Response) => {
       select: { firstName: true }
     });
 
-    // For now, return a simple response (AI will be implemented later)
-    res.json({
-      success: true,
-      data: {
-        question: `Welcome ${user?.firstName || 'there'}! Let's get started with your onboarding.`,
-        completed: false,
-        next_step: 'education_level'
-      }
+    // Call AI service onboarding start
+    const aiResp = await startOnboardingAI({
+      user_id: userId,
+      first_name: user?.firstName || undefined
     });
+
+    res.json({ success: true, data: aiResp });
   } catch (error: any) {
     console.error('Start onboarding error:', error);
     res.status(500).json({
@@ -69,15 +66,24 @@ export const submitAnswer = async (req: Request, res: Response) => {
       });
     }
 
-    // For now, return a simple response (AI will be implemented later)
-    res.json({
-      success: true,
-      data: {
-        question: 'Thank you for your answer. Please continue with the form.',
-        completed: false,
-        next_step: 'continue'
-      }
+    // Forward to AI service
+    const aiResp = await answerOnboardingAI({
+      user_id: userId,
+      answer
     });
+
+    // If onboarding is completed, persist structured_data to PostgreSQL
+    if (aiResp.completed && aiResp.structured_data) {
+      try {
+        await saveOnboardingData(userId, aiResp.structured_data);
+        console.log('AI onboarding structured_data persisted to PostgreSQL');
+      } catch (error) {
+        console.error('Error persisting AI onboarding data:', error);
+        // Continue even if persistence fails - return the response anyway
+      }
+    }
+
+    res.json({ success: true, data: aiResp });
   } catch (error: any) {
     console.error('Submit answer error:', error);
     res.status(500).json({
@@ -234,12 +240,98 @@ async function saveOnboardingData(userId: string, data: any) {
       }
     }
 
+    // Get user's name for context
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true }
+    });
+
+    // Create comprehensive summary text for ChromaDB
+    const summaryParts: string[] = [];
+    
+    // User name
+    if (user?.firstName || user?.lastName) {
+      summaryParts.push(`User: ${user.firstName || ''} ${user.lastName || ''}`.trim());
+    }
+
+    // Education info
+    if (updateData.educationLevel) {
+      summaryParts.push(`Education Level: ${updateData.educationLevel}`);
+    }
+    if (updateData.institution) {
+      summaryParts.push(`Institution: ${updateData.institution}`);
+    }
+    if (updateData.class) {
+      summaryParts.push(`Class: ${updateData.class}`);
+    }
+    if (updateData.group) {
+      summaryParts.push(`Group: ${updateData.group}`);
+    }
+    if (updateData.year) {
+      summaryParts.push(`Year: ${updateData.year}`);
+    }
+    if (updateData.major) {
+      summaryParts.push(`Major: ${updateData.major}`);
+    }
+    if (updateData.board) {
+      summaryParts.push(`Board: ${updateData.board}`);
+    }
+
+    // Courses/Subjects
+    const allCourses = [
+      ...(data.courses || []).map((c: any) => c.name || c.courseName || ''),
+      ...(data.subjects || [])
+    ];
+    if (allCourses.length > 0) {
+      summaryParts.push(`Courses/Subjects: ${allCourses.join(', ')}`);
+    }
+
+    // Skills
+    const skillNames = (data.skill_goals || data.skills || []).map((s: any) => s.name || '').filter(Boolean);
+    if (skillNames.length > 0) {
+      summaryParts.push(`Skills: ${skillNames.join(', ')}`);
+    }
+
+    // Financial situation
+    if (financialData.monthly_budget || financialData.monthlyBudget) {
+      const budget = financialData.monthly_budget || financialData.monthlyBudget;
+      summaryParts.push(`Monthly Budget: ${budget}`);
+    }
+
+    // Additional fields
+    if (Object.keys(additionalFields).length > 0) {
+      summaryParts.push(`Additional Info: ${JSON.stringify(additionalFields)}`);
+    }
+
+    const summaryText = summaryParts.join('\n');
+
+    // Save to ChromaDB via AI service
+    let chromaDocId = `onboarding-${userId}-${Date.now()}`;
+    try {
+      const ingestResult = await ingestDocs({
+        user_id: userId,
+        docs: [{
+          id: chromaDocId,
+          text: summaryText,
+          meta: {
+            type: 'onboarding',
+            source: 'form',
+            timestamp: new Date().toISOString()
+          }
+        }]
+      });
+      console.log('Onboarding data saved to ChromaDB:', ingestResult);
+    } catch (error) {
+      console.error('Error saving to ChromaDB:', error);
+      // Continue even if ChromaDB save fails
+    }
+
     // Save conversation to AIMemory for future reference
     await prisma.aIMemory.create({
       data: {
         userId,
-        chromaId: `onboarding-${userId}-${Date.now()}`,
-        type: 'chat',
+        chromaId: chromaDocId,
+        type: 'onboarding',
         metadata: {
           source: 'onboarding',
           topic: 'user_setup',

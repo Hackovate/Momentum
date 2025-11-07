@@ -156,7 +156,13 @@ Core tables include:
 - ✅ Use **Gemini API** for reasoning and generation
 - ✅ Use **ChromaDB** for semantic memory retrieval
 - ✅ Use **LangChain** for document processing and retrieval
+- ✅ **ALWAYS check Context7 documentation** before implementing LangChain/ChromaDB features
 - ❌ Never directly access Postgres (use backend API)
+
+**Context7 Usage for AI Service**:
+- Before implementing LangChain features, check docs via Context7: `resolve-library-id("langchain")` → `get-library-docs(...)`
+- Before ChromaDB operations, verify latest API: `resolve-library-id("chromadb")` → `get-library-docs(...)`
+- Before Gemini API calls, check SDK docs: `resolve-library-id("google-genai")` → `get-library-docs(...)`
 
 ### Frontend (React + Vite)
 
@@ -182,7 +188,14 @@ Core tables include:
 - ✅ Indexed by `user_id` and context type
 - ✅ Use for retrieval-augmented generation (RAG)
 - ✅ Store metadata with embeddings for filtering
+- ✅ Use LangChain's ChromaDB integration for better document management
 - ❌ Never store PII or sensitive data
+
+**ChromaDB Best Practices**:
+- Use collections per user or context type for better isolation
+- Always include metadata: `user_id`, `type` (onboarding/notes/syllabus), `timestamp`
+- Query with filters: `where={"user_id": user_id, "type": "notes"}`
+- Use proper embedding dimensions (768 for text-embedding-004)
 
 ### AI Response Format
 
@@ -212,6 +225,9 @@ Copilot should be able to:
 7. ✅ Generate TypeScript types from Prisma schema
 8. ✅ Implement error handling and validation
 9. ✅ Create reusable UI components with shadcn/ui
+10. ✅ **Use Context7 to verify LangChain/ChromaDB patterns before implementing**
+11. ✅ **Explain LangChain components** (text splitters, document loaders, chains) when implementing
+12. ✅ **Implement proper RAG patterns** using LangChain + ChromaDB integration
 
 ---
 

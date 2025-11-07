@@ -17,7 +17,7 @@ export const removeAuthToken = (): void => {
 };
 
 // Generic API request handler
-const apiRequest = async <T>(
+export const apiRequest = async <T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> => {
@@ -584,6 +584,22 @@ export const onboardingAPI = {
     }>('/onboarding/submit', {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  },
+};
+
+// AI Chat API
+export const aiChatAPI = {
+  chat: async (message: string, conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        response: string;
+        conversation_id?: string;
+      };
+    }>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversation_history: conversationHistory || [] }),
     });
   },
 };

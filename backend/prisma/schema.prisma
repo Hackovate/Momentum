@@ -24,6 +24,7 @@ model User {
   major             String?            // For university: field of study
   board             String?            // For school/college: "Dhaka", "Chittagong", "Rajshahi", etc.
   expectedGraduation DateTime?         // Expected graduation date
+  unstructuredContext String?          @db.Text // User-editable unstructured context for AI
   
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt

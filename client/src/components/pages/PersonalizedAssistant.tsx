@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { Send, Paperclip, Sparkles, CheckCircle2, Calendar, GraduationCap, Wallet, BookOpen, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Send, Paperclip, Sparkles, CheckCircle2, Calendar, GraduationCap, Wallet, BookOpen, X, Loader2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { ScrollArea } from '../ui/scroll-area';
+import { aiChatAPI } from '@/lib/api';
+import { toast } from 'sonner';
+import { ContextWindow } from '../modals/ContextWindow';
+import { Settings } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -22,90 +26,128 @@ interface LinkedItem {
   action: string;
 }
 
+// Message Bubble Component
+function MessageBubble({ msg }: { msg: Message }) {
+  const isLongMessage = msg.content.length > 300;
+  const [isExpanded, setIsExpanded] = useState(!isLongMessage);
+  
+  return (
+    <div className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'} group`}>
+      <div className={`max-w-[85%] sm:max-w-[75%] ${msg.type === 'user' ? 'flex flex-col items-end' : ''}`}>
+        {msg.type === 'ai' && (
+          <div className="flex items-center gap-2 mb-1.5">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="text-xs font-medium text-gray-600">AI Assistant</span>
+          </div>
+        )}
+        <div
+          className={`rounded-2xl px-4 py-3 shadow-sm transition-all ${
+            msg.type === 'user'
+              ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-br-md'
+              : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md hover:shadow-md'
+          }`}
+        >
+          <div className="prose prose-sm max-w-none">
+            <p className={`text-sm leading-relaxed ${msg.type === 'user' ? 'text-white' : 'text-gray-800'} whitespace-pre-wrap break-words`}>
+              {isLongMessage && !isExpanded 
+                ? `${msg.content.substring(0, 300)}...` 
+                : msg.content}
+            </p>
+            {isLongMessage && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className={`mt-2 text-xs font-medium underline hover:no-underline transition-all ${
+                  msg.type === 'user' ? 'text-violet-100 hover:text-white' : 'text-violet-600 hover:text-violet-700'
+                }`}
+              >
+                {isExpanded ? 'Show less' : 'Show more'}
+              </button>
+            )}
+          </div>
+        </div>
+        <span className={`text-xs text-gray-400 mt-1.5 ${msg.type === 'user' ? 'text-right' : 'text-left'}`}>
+          {msg.timestamp}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export function PersonalizedAssistant() {
   const [message, setMessage] = useState('');
   const [showLinkedItems, setShowLinkedItems] = useState(true);
-
-  const initialMessages: Message[] = [
+  const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       type: 'ai',
       content: "Hello! I'm your AI Student Life Assistant. I can help you manage tasks, plan your day, track expenses, and much more. How can I assist you today?",
-      timestamp: '10:00 AM'
-    },
-    {
-      id: 2,
-      type: 'user',
-      content: 'Add this note: finish AI assignment by Friday.',
-      timestamp: '10:02 AM'
-    },
-    {
-      id: 3,
-      type: 'ai',
-      content: "Got it! I've added 'Finish AI assignment' to your Academics > Assignments with a deadline of Friday, November 7th. Would you like me to block out study time in your daily planner as well?",
-      timestamp: '10:02 AM',
-      linkedItems: [
-        {
-          id: '1',
-          type: 'task',
-          title: 'Finish AI assignment',
-          section: 'Academics > Assignments',
-          action: 'Added'
-        }
-      ]
-    },
-    {
-      id: 4,
-      type: 'user',
-      content: 'Yes please, schedule 3 hours tomorrow afternoon.',
-      timestamp: '10:03 AM'
-    },
-    {
-      id: 5,
-      type: 'ai',
-      content: "Perfect! I've scheduled 3 hours for your AI assignment tomorrow (Tuesday) from 2:00 PM to 5:00 PM. I've also moved your skill development session to the evening to accommodate this.",
-      timestamp: '10:03 AM',
-      linkedItems: [
-        {
-          id: '2',
-          type: 'task',
-          title: 'AI Assignment - Study Session',
-          section: 'Daily Planner',
-          action: 'Scheduled for Nov 4, 2:00 PM'
-        }
-      ]
-    },
-    {
-      id: 6,
-      type: 'user',
-      content: 'My class got canceled, what should I do?',
-      timestamp: '10:15 AM'
-    },
-    {
-      id: 7,
-      type: 'ai',
-      content: "I'll rebalance your daily plan for you! Since your class is canceled, I suggest using that time for:\n\n1. Working on your Data Structures assignment (high priority)\n2. Reviewing Chapter 7 - Operating Systems\n3. Taking a 30-minute study break\n\nI've also updated your schedule to reflect these changes. You now have an extra hour of productive time today!",
-      timestamp: '10:15 AM',
-      linkedItems: [
-        {
-          id: '3',
-          type: 'class',
-          title: 'Database Systems Lecture',
-          section: 'Academics',
-          action: 'Canceled'
-        },
-        {
-          id: '4',
-          type: 'task',
-          title: 'Data Structures Assignment',
-          section: 'Daily Planner',
-          action: 'Rescheduled to 11:00 AM'
-        }
-      ]
+      timestamp: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
     }
-  ];
+  ]);
+  const [loading, setLoading] = useState(false);
+  const [contextWindowOpen, setContextWindowOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const [messages] = useState<Message[]>(initialMessages);
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const formatTime = () => {
+    return new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || loading) return;
+
+    const userMessage: Message = {
+      id: Date.now(),
+      type: 'user',
+      content: message.trim(),
+      timestamp: formatTime()
+    };
+
+    // Add user message immediately
+    setMessages(prev => [...prev, userMessage]);
+    const currentMessage = message.trim();
+    setMessage('');
+    setLoading(true);
+
+    try {
+      // Build conversation history for context (include all previous messages)
+      const conversationHistory = messages
+        .filter(m => m.type === 'ai' || m.type === 'user')
+        .map(m => ({
+          role: m.type === 'user' ? 'user' as const : 'assistant' as const,
+          content: m.content
+        }));
+
+      // Call API (current message is sent separately, history is for context)
+      const response = await aiChatAPI.chat(currentMessage, conversationHistory);
+
+      if (response.success && response.data) {
+        const aiMessage: Message = {
+          id: Date.now() + 1,
+          type: 'ai',
+          content: response.data.response,
+          timestamp: formatTime()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      } else {
+        throw new Error('Failed to get AI response');
+      }
+    } catch (error: any) {
+      console.error('Chat error:', error);
+      toast.error(error.message || 'Failed to send message. Please try again.');
+      // Remove user message on error
+      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const allLinkedItems = messages
     .filter(msg => msg.linkedItems && msg.linkedItems.length > 0)
@@ -165,13 +207,24 @@ export function PersonalizedAssistant() {
           </div>
           <p className="text-gray-600">Your AI-powered companion for managing student life</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => setShowLinkedItems(!showLinkedItems)}
-          className="gap-2"
-        >
-          {showLinkedItems ? 'Hide' : 'Show'} Linked Items
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setContextWindowOpen(true)}
+            className="gap-2"
+            title="View/Edit AI Context"
+          >
+            <Settings className="w-4 h-4" />
+            Context
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setShowLinkedItems(!showLinkedItems)}
+            className="gap-2"
+          >
+            {showLinkedItems ? 'Hide' : 'Show'} Linked Items
+          </Button>
+        </div>
       </div>
 
       {/* Main Chat Interface */}
@@ -181,47 +234,40 @@ export function PersonalizedAssistant() {
           {/* Messages */}
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-full">
-              <div className="p-4 space-y-3">
+              <div className="p-5 space-y-4">
                 {messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-[85%] sm:max-w-[75%]`}>
-                      {msg.type === 'ai' && (
-                        <div className="flex items-center gap-2 mb-1">
-                          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
-                            <Sparkles className="w-3 h-3 text-white" />
-                          </div>
-                          <span className="text-xs text-gray-500">AI Assistant</span>
+                  <MessageBubble key={msg.id} msg={msg} />
+                ))}
+                {loading && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[85%] sm:max-w-[75%]">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
+                          <Sparkles className="w-3.5 h-3.5 text-white" />
                         </div>
-                      )}
-                      <div
-                        className={`rounded-2xl px-4 py-2.5 ${
-                          msg.type === 'user'
-                            ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white'
-                            : 'bg-gray-100 text-gray-900'
-                        }`}
-                      >
-                        <p className="whitespace-pre-line text-sm">{msg.content}</p>
+                        <span className="text-xs font-medium text-gray-600">AI Assistant</span>
                       </div>
-                      <span className="text-xs text-gray-400 mt-1 block">
-                        {msg.timestamp}
-                      </span>
+                      <div className="rounded-2xl rounded-bl-md px-4 py-3 bg-white border border-gray-200 shadow-sm">
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
+                          <span className="text-sm text-gray-600">Thinking...</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                ))}
+                )}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
           </div>
 
           {/* Input Area */}
-          <div className="p-3 border-t border-gray-200 bg-gray-50">
-            <div className="flex items-start gap-2">
+          <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="flex items-end gap-2">
               <Button
                 variant="outline"
                 size="icon"
-                className="flex-shrink-0 h-9 w-9 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-300"
+                className="flex-shrink-0 h-10 w-10 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-300 transition-colors"
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
@@ -230,24 +276,31 @@ export function PersonalizedAssistant() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Ask me anything... I can help with tasks, schedules, expenses, and more!"
-                  className="resize-none min-h-[70px] max-h-[110px] border-gray-300 focus:border-violet-500 focus:ring-violet-500"
+                  className="resize-none min-h-[70px] max-h-[120px] border-gray-300 focus:border-violet-500 focus:ring-violet-500 rounded-xl"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
-                      // Handle send message
+                      handleSendMessage();
                     }
                   }}
+                  disabled={loading}
                 />
+                <p className="text-xs text-gray-400 mt-1.5 ml-1">
+                  Press Enter to send, Shift + Enter for new line
+                </p>
               </div>
               <Button
-                className="flex-shrink-0 h-9 px-5 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white"
+                onClick={handleSendMessage}
+                disabled={loading || !message.trim()}
+                className="flex-shrink-0 h-10 px-6 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md transition-all rounded-xl"
               >
-                <Send className="w-4 h-4" />
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
               </Button>
             </div>
-            <p className="text-xs text-gray-500 mt-2 ml-11">
-              Press Enter to send, Shift + Enter for new line
-            </p>
           </div>
         </Card>
 
@@ -376,6 +429,12 @@ export function PersonalizedAssistant() {
           </div>
         </Card>
       </div>
+
+      {/* Context Window Modal */}
+      <ContextWindow
+        open={contextWindowOpen}
+        onOpenChange={setContextWindowOpen}
+      />
     </div>
   );
 }

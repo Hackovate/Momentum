@@ -14,6 +14,7 @@ import savingsRoutes from './routes/savings.routes';
 import monthlyBudgetRoutes from './routes/monthly-budget.routes';
 import onboardingRoutes from './routes/onboarding.routes';
 import analyticsRoutes from './routes/analytics.routes';
+import aiRoutes from './routes/ai.routes';
 
 // Load environment variables
 dotenv.config();
@@ -43,6 +44,7 @@ app.use('/api/savings', savingsRoutes);
 app.use('/api/monthly-budgets', monthlyBudgetRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
