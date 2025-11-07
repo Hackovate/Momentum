@@ -1,0 +1,24 @@
+{
+  "include": [
+    "momentum-ai"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv"
+  ],
+  "executionEnvironments": [
+    {
+      "root": "momentum-ai",
+      "pythonVersion": "3.11",
+      "pythonPlatform": "Windows",
+      "venvPath": "momentum-ai",
+      "venv": ".venv"
+    }
+  ],
+  "typeCheckingMode": "basic",
+  "reportMissingImports": true,
+  "reportMissingTypeStubs": false
+}
+
+
