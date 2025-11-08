@@ -1,9 +1,22 @@
 import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware';
+import * as crypto from 'crypto';
 
 const router = Router();
 const prisma = new PrismaClient();
+
+// Helper function to calculate syllabus hash
+function calculateSyllabusHash(syllabus: string): string {
+  if (!syllabus || syllabus.trim().length === 0) {
+    return '';
+  }
+  // Use a combination of length and content hash for better change detection
+  const normalized = syllabus.trim();
+  const hash = crypto.createHash('md5').update(normalized).digest('hex');
+  // Include length in hash to catch additions/deletions
+  return `${normalized.length}_${hash.substring(0, 16)}`;
+}
 
 // All routes require authentication
 router.use(authenticate);
@@ -58,10 +71,28 @@ router.put('/:id/syllabus', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Course not found' });
     }
 
+    // Calculate new hash if syllabus is being updated
+    const newHash = syllabus !== undefined && syllabus !== null 
+      ? calculateSyllabusHash(syllabus) 
+      : null;
+    
+    // Check if syllabus changed
+    const syllabusChanged = existing.syllabusHash && 
+      existing.syllabusHash !== newHash;
+
     // Update syllabus in database
+    // If syllabus changed or was deleted, clear generation metadata to force regeneration
     const course = await prisma.course.update({
       where: { id },
-      data: { syllabus: syllabus !== undefined ? syllabus : null }
+      data: { 
+        syllabus: syllabus !== undefined ? syllabus : null,
+        // Clear generation metadata if syllabus changed or was deleted
+        ...(syllabusChanged || (syllabus === null && existing.syllabusHash) ? {
+          syllabusHash: null,
+          lastGeneratedMonths: null,
+          lastGeneratedAt: null
+        } : {})
+      }
     });
 
     // Sync to ChromaDB via AI service
@@ -137,6 +168,43 @@ router.post('/:id/syllabus/generate', async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Invalid months value. Must be between 1 and 24' });
     }
 
+    // Calculate current syllabus hash
+    const currentHash = calculateSyllabusHash(existing.syllabus);
+    
+    // Check if syllabus or months have changed
+    const syllabusChanged = existing.syllabusHash !== currentHash;
+    const monthsChanged = existing.lastGeneratedMonths !== months;
+    
+    // If nothing changed, return existing tasks
+    if (!syllabusChanged && !monthsChanged && existing.lastGeneratedAt) {
+      // Get existing syllabus-generated tasks
+      const existingTasks = await prisma.assignment.findMany({
+        where: {
+          courseId: id,
+          syllabusGenerated: true
+        },
+        orderBy: { dueDate: 'asc' }
+      });
+      
+      return res.json({
+        message: 'Tasks already exist for this syllabus and time period',
+        existing: true,
+        assignments: existingTasks,
+        count: existingTasks.length
+      });
+    }
+
+    // If changed, delete old syllabus-generated tasks
+    if (syllabusChanged || monthsChanged) {
+      const deleteResult = await prisma.assignment.deleteMany({
+        where: {
+          courseId: id,
+          syllabusGenerated: true
+        }
+      });
+      console.log(`Deleted ${deleteResult.count} old syllabus-generated tasks`);
+    }
+
     // Call AI service to generate tasks
     const { generateSyllabusTasks } = await import('../services/ai.service');
     const tasks = await generateSyllabusTasks(req.userId!, id, existing.syllabus, months);
@@ -160,9 +228,20 @@ router.post('/:id/syllabus/generate', async (req: AuthRequest, res) => {
       assignments.push(assignment);
     }
 
+    // Update course metadata
+    await prisma.course.update({
+      where: { id },
+      data: {
+        syllabusHash: currentHash,
+        lastGeneratedMonths: months,
+        lastGeneratedAt: new Date()
+      }
+    });
+
     res.json({ 
       message: `Generated ${assignments.length} tasks for ${months} month study plan`,
-      assignments 
+      assignments,
+      existing: false
     });
   } catch (error) {
     console.error('Error generating syllabus tasks:', error);

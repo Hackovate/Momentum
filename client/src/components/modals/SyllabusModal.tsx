@@ -5,6 +5,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
+import { CheckCircle2, Calendar, BookOpen } from 'lucide-react';
 import { useAuth } from '@/lib/useAuth';
 import { coursesAPI } from '@/lib/api';
 
@@ -13,7 +14,7 @@ interface SyllabusModalProps {
   onClose: () => void;
   onSave: (syllabus: string) => void;
   onDelete?: () => void;
-  onGenerate?: (months: number) => void;
+  onGenerate?: (months: number) => Promise<{ message?: string; assignments?: any[] }>;
   courseName: string;
   existingSyllabus?: string | null;
   courseId?: string;
@@ -39,6 +40,8 @@ export function SyllabusModal({
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiStatus, setAiStatus] = useState<{ found: boolean; message: string; chunk_count: number } | null>(null);
   const [isCheckingAI, setIsCheckingAI] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [generatedTasks, setGeneratedTasks] = useState<{ count: number; message: string; existing?: boolean } | null>(null);
   
   // Check if user is school or college level
   const isSchoolOrCollege = user?.educationLevel === 'school' || user?.educationLevel === 'college';
@@ -46,9 +49,11 @@ export function SyllabusModal({
   useEffect(() => {
     // Update syllabus when existingSyllabus changes
     setSyllabus(existingSyllabus || '');
-    // Reset AI status when modal opens
+    // Reset AI status and generated tasks when modal opens
     if (open) {
       setAiStatus(null);
+      setGeneratedTasks(null);
+      setShowSuccessModal(false);
     }
   }, [existingSyllabus, open]);
 
@@ -113,8 +118,30 @@ export function SyllabusModal({
     }
     setIsGenerating(true);
     try {
-      await onGenerate(monthsNum);
+      const result = await onGenerate(monthsNum);
       setShowGenerateDialog(false);
+      
+      // Check if tasks already exist
+      if (result.existing) {
+        // Show info message instead of success modal
+        setGeneratedTasks({
+          count: result.count || result.assignments?.length || 0,
+          message: result.message || 'Tasks already exist for this syllabus and time period.',
+          existing: true
+        });
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          setGeneratedTasks(null);
+        }, 5000);
+      } else {
+        // New tasks generated - show success modal
+        setGeneratedTasks({
+          count: result.assignments?.length || 0,
+          message: result.message || `Generated ${result.assignments?.length || 0} tasks successfully!`,
+          existing: false
+        });
+        setShowSuccessModal(true);
+      }
       setMonths('6');
     } catch (error) {
       console.error('Error generating study plan:', error);
@@ -149,17 +176,29 @@ export function SyllabusModal({
             </DialogTitle>
             <DialogDescription>
               Add or edit the syllabus for this course. The AI will use this content to help you prepare for exams and generate study tasks.
-              {aiStatus && (
-                <div className="mt-2 flex items-center gap-2">
-                  <Badge variant={aiStatus.found ? 'default' : 'destructive'}>
-                    {aiStatus.found ? '✓ AI Knows Syllabus' : '✗ Not in AI Memory'}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {aiStatus.message} {aiStatus.found && `(${aiStatus.chunk_count} chunks)`}
-                  </span>
-                </div>
-              )}
             </DialogDescription>
+            {aiStatus && (
+              <div className="mt-2 flex items-center gap-2 px-6">
+                <Badge variant={aiStatus.found ? 'default' : 'destructive'}>
+                  {aiStatus.found ? '✓ AI Knows Syllabus' : '✗ Not in AI Memory'}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {aiStatus.message} {aiStatus.found && `(${aiStatus.chunk_count} chunks)`}
+                </span>
+              </div>
+            )}
+            {generatedTasks && generatedTasks.existing && (
+              <div className="mt-2 px-6">
+                <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <p className="text-sm text-blue-900 dark:text-blue-300">
+                    ℹ️ <strong>Tasks Already Exist:</strong> {generatedTasks.message} ({generatedTasks.count} tasks)
+                  </p>
+                  <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                    To generate new tasks, modify the syllabus or change the time period.
+                  </p>
+                </div>
+              </div>
+            )}
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
             <div className="flex-1 flex flex-col space-y-2 mb-4">
@@ -248,6 +287,64 @@ export function SyllabusModal({
             </Button>
             <Button type="button" onClick={handleGenerate} disabled={isGenerating}>
               {isGenerating ? 'Generating...' : 'Generate Plan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={setShowSuccessModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div className="rounded-full bg-green-100 dark:bg-green-900/20 p-3">
+                <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-xl">Study Plan Generated!</DialogTitle>
+            <DialogDescription className="text-center">
+              Your personalized study plan has been created successfully.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-primary/10 p-2">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Tasks Created</p>
+                  <p className="text-2xl font-bold text-primary">{generatedTasks?.count || 0}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-blue-100 dark:bg-blue-900/20 p-2">
+                  <Calendar className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Study Plan</p>
+                  <p className="text-sm text-muted-foreground">
+                    Tasks are distributed across your selected time period
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-xs text-blue-900 dark:text-blue-300">
+                💡 <strong>Tip:</strong> Check the "Study Plan" tab in Assignments to view all generated tasks.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              onClick={() => {
+                setShowSuccessModal(false);
+                onClose();
+              }}
+              className="w-full"
+            >
+              View Assignments
             </Button>
           </DialogFooter>
         </DialogContent>

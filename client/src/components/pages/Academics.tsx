@@ -328,11 +328,15 @@ export function Academics() {
     setSyllabusLoading(true);
     try {
       const result = await coursesAPI.generateSyllabusTasks(selectedCourse.id, months);
-      alert(result.message || `Generated ${result.assignments?.length || 0} tasks successfully!`);
       await loadData(); // Reload to show new tasks
+      // Return result so the modal can show success message
+      return {
+        message: result.message || `Generated ${result.assignments?.length || 0} tasks successfully!`,
+        assignments: result.assignments || []
+      };
     } catch (err) {
       console.error('Generate syllabus tasks failed', err);
-      alert('Failed to generate study plan');
+      throw err; // Re-throw so modal can handle error
     } finally {
       setSyllabusLoading(false);
     }

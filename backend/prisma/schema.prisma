@@ -80,6 +80,9 @@ model Course {
   progress          Int? // 0-100
   attendance        Float? // percentage 0-100
   syllabus          String? // Syllabus text for AI context
+  syllabusHash      String? // Hash of syllabus used for last generation
+  lastGeneratedMonths Int? // Months used for last generation
+  lastGeneratedAt  DateTime? // When tasks were last generated
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
