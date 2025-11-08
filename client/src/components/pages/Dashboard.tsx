@@ -228,9 +228,6 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
   const userName = user?.firstName || user?.email?.split('@')[0] || "Student";
   const currentHour = currentTime.getHours();
   const greeting = currentHour < 12 ? "Good Morning" : currentHour < 18 ? "Good Afternoon" : "Good Evening";
-  
-  // Debug: Log current time
-  console.log('Current hour:', currentHour, 'Greeting:', greeting);
 
   // Calculate stats from real data with proper error handling
   const completedTasks = tasks.filter(t => t.status === 'completed' || t.status === 'done').length;

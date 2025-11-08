@@ -63,6 +63,11 @@ export async function planDay(payload: any): Promise<any> {
   return data;
 }
 
+export async function rebalanceDay(payload: any): Promise<any> {
+  const { data } = await http.post('/rebalance', payload);
+  return data;
+}
+
 // Chat with AI
 export interface ChatRequest {
   user_id: string;

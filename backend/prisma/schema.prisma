@@ -46,6 +46,7 @@ model User {
   aiPlans           AIPlan[]
   aiFeedbacks       AIFeedback[]
   habits            Habit[]
+  taskPatterns      UserTaskPattern[]
 
   @@map("users")
 }
@@ -122,6 +123,10 @@ model Assignment {
   aiGenerated       Boolean   @default(false) // Whether created by AI
   syllabusGenerated Boolean   @default(false) // Whether generated from syllabus
   examId            String? // Link to exam for exam-based tasks
+  progressPercentage Float? // Track completion percentage (0-100)
+  actualHoursSpent  Float? // Track actual time spent
+  daysAllocated     Int? // Number of days allocated for task
+  currentDay        Int? // Current day in multi-day task (1, 2, 3, etc.)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   course            Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -250,6 +255,10 @@ model Task {
   estimatedMinutes Int? // estimated time to complete
   status           String    @default("pending")
   dueDate          DateTime?
+  progressPercentage Float? // Track completion percentage (0-100)
+  actualMinutesSpent Int? // Track actual time spent in minutes
+  daysAllocated     Int? // Number of days allocated for task
+  currentDay        Int? // Current day in multi-day task (1, 2, 3, etc.)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -290,18 +299,24 @@ model Skill {
 }
 
 model Milestone {
-  id        String    @id @default(uuid())
-  skillId   String
-  userId    String
-  name      String
-  completed Boolean   @default(false) // Kept for backward compatibility
-  status    String    @default("pending") // pending, in-progress, completed
-  dueDate   DateTime? // Optional due date for sorting
-  order     Int       @default(0) // Display order
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  skill     Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String    @id @default(uuid())
+  skillId           String
+  userId            String
+  name              String
+  completed         Boolean   @default(false) // Kept for backward compatibility
+  status            String    @default("pending") // pending, in-progress, completed
+  dueDate           DateTime? // Optional due date for sorting
+  startDate         DateTime? // Start date for multi-day milestones
+  order             Int       @default(0) // Display order
+  progressPercentage Float?   // Track completion percentage (0-100)
+  estimatedHours    Float?    // Estimated time to complete milestone
+  actualHoursSpent  Float?    // Actual time spent
+  daysAllocated     Int?      // Number of days allocated for milestone
+  currentDay        Int?      // Current day in multi-day milestone
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  skill             Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("milestones")
 }
@@ -427,4 +442,20 @@ model AIFeedback {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_feedback")
+}
+
+model UserTaskPattern {
+  id              String   @id @default(uuid())
+  userId          String
+  taskType        String   // "academic", "skill", "personal"
+  estimatedHours  Float
+  actualHours     Float
+  estimatedDays   Int
+  actualDays      Int?     // Optional - only set when task is completed
+  completionRate  Float    // actualHours / estimatedHours (e.g., 0.5 = completed in half the time)
+  progressRate    Float?   // hours per percentage point (e.g., 0.02 = 0.02h per 1% progress)
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_task_patterns")
 }

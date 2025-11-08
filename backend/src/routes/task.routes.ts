@@ -44,7 +44,8 @@ router.post('/', async (req: AuthRequest, res) => {
 router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
-    const { title, description, priority, status, dueDate, type, estimatedMinutes } = req.body;
+    const { title, description, priority, status, dueDate, type, estimatedMinutes, 
+            progressPercentage, actualMinutesSpent, daysAllocated, currentDay } = req.body;
     
     // Verify task exists and belongs to user
     const existing = await prisma.task.findUnique({
@@ -55,17 +56,66 @@ router.put('/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Task not found' });
     }
 
+    const updateData: any = {
+      title: title !== undefined ? title : existing.title,
+      description: description !== undefined ? (description || null) : existing.description,
+      priority: priority || existing.priority || 'medium',
+      status: status || existing.status,
+      dueDate: dueDate !== undefined ? (dueDate ? new Date(dueDate) : null) : existing.dueDate,
+      type: type || existing.type,
+      estimatedMinutes: estimatedMinutes !== undefined ? estimatedMinutes : existing.estimatedMinutes
+    };
+    
+    // Handle progress tracking fields
+    if (progressPercentage !== undefined) {
+      if (progressPercentage === null || progressPercentage === '') {
+        updateData.progressPercentage = null;
+      } else {
+        const progress = parseFloat(progressPercentage);
+        updateData.progressPercentage = isNaN(progress) ? null : Math.max(0, Math.min(100, progress));
+      }
+    }
+    
+    if (actualMinutesSpent !== undefined) {
+      if (actualMinutesSpent === null || actualMinutesSpent === '') {
+        updateData.actualMinutesSpent = null;
+      } else {
+        const minutes = parseInt(actualMinutesSpent);
+        updateData.actualMinutesSpent = isNaN(minutes) ? null : Math.max(0, minutes);
+      }
+    }
+    
+    if (daysAllocated !== undefined) {
+      if (daysAllocated === null || daysAllocated === '') {
+        updateData.daysAllocated = null;
+        updateData.currentDay = null;
+      } else {
+        const days = parseInt(daysAllocated);
+        updateData.daysAllocated = isNaN(days) ? null : Math.max(1, days);
+      }
+    }
+    
+    if (currentDay !== undefined) {
+      if (currentDay === null || currentDay === '') {
+        updateData.currentDay = null;
+      } else {
+        const day = parseInt(currentDay);
+        updateData.currentDay = isNaN(day) ? null : Math.max(1, day);
+      }
+    }
+    
+    // Auto-calculate currentDay based on progressPercentage and daysAllocated
+    if (updateData.progressPercentage !== undefined && updateData.daysAllocated !== undefined && 
+        updateData.currentDay === undefined && updateData.progressPercentage !== null && 
+        updateData.daysAllocated !== null) {
+      const progress = updateData.progressPercentage;
+      const days = updateData.daysAllocated;
+      updateData.currentDay = Math.ceil((progress / 100) * days) || 1;
+    }
+
     const task = await prisma.task.update({
       where: { id },
-      data: {
-        title,
-        description: description || null,
-        priority: priority || 'medium',
-        status: status || existing.status,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        type: type || existing.type,
-        estimatedMinutes: estimatedMinutes || existing.estimatedMinutes
-      }
+      data: updateData
     });
     res.json(task);
   } catch (error: any) {

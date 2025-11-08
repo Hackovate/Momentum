@@ -468,14 +468,38 @@ export const skillsAPI = {
     return apiRequest<any[]>(`/skills/${skillId}/milestones`);
   },
 
-  addMilestone: async (skillId: string, data: { name: string; completed?: boolean; status?: string; dueDate?: string; order?: number }) => {
+  addMilestone: async (skillId: string, data: { 
+    name: string; 
+    completed?: boolean; 
+    status?: string; 
+    dueDate?: string; 
+    startDate?: string;
+    order?: number;
+    estimatedHours?: number;
+    progressPercentage?: number;
+    actualHoursSpent?: number;
+    daysAllocated?: number;
+    currentDay?: number;
+  }) => {
     return apiRequest<any>(`/skills/${skillId}/milestones`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
   },
 
-  updateMilestone: async (milestoneId: string, data: { name?: string; completed?: boolean; status?: string; dueDate?: string; order?: number }) => {
+  updateMilestone: async (milestoneId: string, data: { 
+    name?: string; 
+    completed?: boolean; 
+    status?: string; 
+    dueDate?: string; 
+    startDate?: string;
+    order?: number;
+    estimatedHours?: number;
+    progressPercentage?: number;
+    actualHoursSpent?: number;
+    daysAllocated?: number;
+    currentDay?: number;
+  }) => {
     return apiRequest<any>(`/skills/milestones/${milestoneId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -869,4 +893,55 @@ export default {
   onboarding: onboardingAPI,
   analytics: analyticsAPI,
   habits: habitsAPI,
+};
+
+// AI Planning API
+export const planningAPI = {
+  generateDailyPlan: async (data: {
+    date_iso: string;
+    tasks: any[];
+    classes: any[];
+    available_times?: any[];
+    preferences?: any;
+  }) => {
+    return apiRequest<any>('/ai/plan', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  rebalanceDailyPlan: async (data: {
+    date_iso: string;
+    incomplete_tasks: any[];
+    completion_history?: any;
+    preferences?: any;
+  }) => {
+    return apiRequest<any>('/ai/plan/rebalance', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+};
+
+export const learningAPI = {
+  savePattern: async (data: {
+    taskType: string;
+    estimatedHours: number;
+    actualHours: number;
+    estimatedDays: number;
+    actualDays: number | null;
+    completionRate: number;
+    progressRate: number | null;
+  }) => apiRequest<any>('/learning/patterns', { method: 'POST', body: JSON.stringify(data) }),
+  
+  getPatterns: async (taskType?: string) => {
+    const query = taskType ? `?taskType=${taskType}` : '';
+    return apiRequest<any>(`/learning/patterns${query}`);
+  },
+  
+  predict: async (data: {
+    taskType: string;
+    estimatedHours: number;
+    estimatedDays: number;
+  }) => apiRequest<any>('/learning/predict', { method: 'POST', body: JSON.stringify(data) }),
 };

@@ -6,7 +6,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
-import { Plus, Trash2, Check, CheckCircle2, Circle, Link as LinkIcon, FileText, Upload, ExternalLink } from 'lucide-react';
+import { Plus, Trash2, Check, CheckCircle2, Circle, Link as LinkIcon, FileText, Upload, ExternalLink, Pencil } from 'lucide-react';
 import { skillsAPI } from '@/lib/api';
 
 interface SkillModalProps {
@@ -39,6 +39,10 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
   const [milestones, setMilestones] = useState<any[]>([]);
   const [newMilestone, setNewMilestone] = useState('');
   const [newMilestoneDueDate, setNewMilestoneDueDate] = useState('');
+  const [newMilestoneStartDate, setNewMilestoneStartDate] = useState('');
+  const [newMilestoneEstimatedHours, setNewMilestoneEstimatedHours] = useState('');
+  const [editingMilestoneIndex, setEditingMilestoneIndex] = useState<number | null>(null);
+  const [editingMilestoneData, setEditingMilestoneData] = useState<any>(null);
 
   // Learning Resources
   const [resources, setResources] = useState<any[]>([]);
@@ -69,7 +73,13 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
         // Ensure milestones have status field (migrate from completed if needed)
         const milestonesWithStatus = (skill.milestones || []).map((m: any) => ({
           ...m,
-          status: m.status || (m.completed ? 'completed' : 'pending')
+          status: m.status || (m.completed ? 'completed' : 'pending'),
+          startDate: m.startDate || null,
+          estimatedHours: m.estimatedHours || null,
+          progressPercentage: m.progressPercentage || null,
+          actualHoursSpent: m.actualHoursSpent || null,
+          daysAllocated: m.daysAllocated || null,
+          currentDay: m.currentDay || null
         }));
         setMilestones(milestonesWithStatus);
         setResources(skill.learningResources || []);
@@ -96,6 +106,8 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
     setResources([]);
     setNewMilestone('');
     setNewMilestoneDueDate('');
+    setNewMilestoneStartDate('');
+    setNewMilestoneEstimatedHours('');
     setShowResourceForm(false);
     setResourceForm({ title: '', type: 'link', url: '', content: '', description: '' });
     setCurrentTab('basic');
@@ -118,6 +130,9 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
             completed: m.completed || false,
             status: m.status || (m.completed ? 'completed' : 'pending'),
             dueDate: m.dueDate || null,
+            startDate: m.startDate || null,
+            estimatedHours: m.estimatedHours || null,
+            daysAllocated: m.daysAllocated || null,
             order: index
           }))
         });
@@ -134,6 +149,9 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
               completed: milestone.completed || false,
               status: milestone.status || (milestone.completed ? 'completed' : 'pending'),
               dueDate: milestone.dueDate || null,
+              startDate: milestone.startDate || null,
+              estimatedHours: milestone.estimatedHours || null,
+              daysAllocated: milestone.daysAllocated || null,
               order: milestones.indexOf(milestone)
             });
           }
@@ -152,14 +170,33 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
 
   const handleAddMilestone = () => {
     if (newMilestone.trim()) {
+      // Auto-calculate daysAllocated from dates if both are provided
+      let calculatedDaysAllocated = null;
+      if (newMilestoneStartDate && newMilestoneDueDate) {
+        const start = new Date(newMilestoneStartDate);
+        const due = new Date(newMilestoneDueDate);
+        if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+          const diffTime = due.getTime() - start.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+          if (diffDays > 0) {
+            calculatedDaysAllocated = diffDays;
+          }
+        }
+      }
+      
       setMilestones([...milestones, { 
         name: newMilestone, 
         completed: false,
         status: 'pending',
-        dueDate: newMilestoneDueDate || null
+        dueDate: newMilestoneDueDate || null,
+        startDate: newMilestoneStartDate || null,
+        estimatedHours: newMilestoneEstimatedHours ? parseFloat(newMilestoneEstimatedHours) : null,
+        daysAllocated: calculatedDaysAllocated
       }]);
       setNewMilestone('');
       setNewMilestoneDueDate('');
+      setNewMilestoneStartDate('');
+      setNewMilestoneEstimatedHours('');
     }
   };
 
@@ -169,6 +206,73 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
     if (normalized === 'pending') return 'in-progress';
     if (normalized === 'in-progress') return 'completed';
     return 'pending'; // completed → pending
+  };
+
+  const handleEditMilestone = (index: number) => {
+    const milestone = milestones[index];
+    setEditingMilestoneIndex(index);
+    setEditingMilestoneData({
+      name: milestone.name,
+      startDate: milestone.startDate ? new Date(milestone.startDate).toISOString().split('T')[0] : '',
+      dueDate: milestone.dueDate ? new Date(milestone.dueDate).toISOString().split('T')[0] : '',
+      estimatedHours: milestone.estimatedHours?.toString() || '',
+      daysAllocated: milestone.daysAllocated?.toString() || ''
+    });
+  };
+
+  const handleSaveMilestoneEdit = async (index: number) => {
+    const milestone = milestones[index];
+    const updatedData = { ...editingMilestoneData };
+    
+    // Auto-calculate daysAllocated from dates if both are provided
+    if (updatedData.startDate && updatedData.dueDate) {
+      const start = new Date(updatedData.startDate);
+      const due = new Date(updatedData.dueDate);
+      if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+        const diffTime = due.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        updatedData.daysAllocated = diffDays.toString();
+      }
+    }
+    
+    // Update local state
+    setMilestones(prev => prev.map((m, i) => 
+      i === index ? {
+        ...m,
+        name: updatedData.name,
+        startDate: updatedData.startDate || null,
+        dueDate: updatedData.dueDate || null,
+        estimatedHours: updatedData.estimatedHours ? parseFloat(updatedData.estimatedHours) : null,
+        daysAllocated: updatedData.daysAllocated ? parseInt(updatedData.daysAllocated) : null
+      } : m
+    ));
+    
+    // If milestone has ID (existing milestone), update in backend
+    if (mode === 'edit' && milestone.id) {
+      try {
+        await skillsAPI.updateMilestone(milestone.id, {
+          name: updatedData.name,
+          startDate: updatedData.startDate || null,
+          dueDate: updatedData.dueDate || null,
+          estimatedHours: updatedData.estimatedHours ? parseFloat(updatedData.estimatedHours) : null,
+          daysAllocated: updatedData.daysAllocated ? parseInt(updatedData.daysAllocated) : null
+        });
+        if (onSave) {
+          onSave();
+        }
+      } catch (error) {
+        console.error('Error updating milestone:', error);
+        alert('Failed to update milestone');
+      }
+    }
+    
+    setEditingMilestoneIndex(null);
+    setEditingMilestoneData(null);
+  };
+
+  const handleCancelMilestoneEdit = () => {
+    setEditingMilestoneIndex(null);
+    setEditingMilestoneData(null);
   };
 
   const handleRemoveMilestone = async (index: number) => {
@@ -525,15 +629,68 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
                     Add
                   </Button>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="milestoneStartDate" className="text-sm text-muted-foreground">
+                      Start Date (Optional)
+                    </Label>
+                    <Input
+                      id="milestoneStartDate"
+                      type="date"
+                      value={newMilestoneStartDate}
+                      onChange={(e) => {
+                        setNewMilestoneStartDate(e.target.value);
+                        // Auto-calculate days if both dates are set
+                        if (e.target.value && newMilestoneDueDate) {
+                          const start = new Date(e.target.value);
+                          const due = new Date(newMilestoneDueDate);
+                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                            const diffTime = due.getTime() - start.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            // Days will be auto-calculated in handleAddMilestone
+                          }
+                        }
+                      }}
+                      className="h-11 mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="milestoneDueDate" className="text-sm text-muted-foreground">
+                      Due Date (Optional)
+                    </Label>
+                    <Input
+                      id="milestoneDueDate"
+                      type="date"
+                      value={newMilestoneDueDate}
+                      onChange={(e) => {
+                        setNewMilestoneDueDate(e.target.value);
+                        // Auto-calculate days if both dates are set
+                        if (newMilestoneStartDate && e.target.value) {
+                          const start = new Date(newMilestoneStartDate);
+                          const due = new Date(e.target.value);
+                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                            const diffTime = due.getTime() - start.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            // Days will be auto-calculated in handleAddMilestone
+                          }
+                        }
+                      }}
+                      className="h-11 mt-1"
+                    />
+                  </div>
+                </div>
                 <div>
-                  <Label htmlFor="milestoneDueDate" className="text-sm text-muted-foreground">
-                    Due Date (Optional)
+                  <Label htmlFor="milestoneEstimatedHours" className="text-sm text-muted-foreground">
+                    Estimated Hours (Optional)
                   </Label>
                   <Input
-                    id="milestoneDueDate"
-                    type="date"
-                    value={newMilestoneDueDate}
-                    onChange={(e) => setNewMilestoneDueDate(e.target.value)}
+                    id="milestoneEstimatedHours"
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    placeholder="e.g., 4"
+                    value={newMilestoneEstimatedHours}
+                    onChange={(e) => setNewMilestoneEstimatedHours(e.target.value)}
                     className="h-11 mt-1"
                   />
                 </div>
@@ -631,55 +788,208 @@ export function SkillModal({ open, onClose, onSave, skill, mode }: SkillModalPro
                       
                       // Get current status from the milestone object (this will reflect optimistic updates)
                       const status = milestone.status?.toLowerCase() || (milestone.completed ? 'completed' : 'pending');
+                      const isEditing = editingMilestoneIndex === originalIndex;
                       
                       return (
                         <div
                           key={milestone.id ? `${milestone.id}-${status}` : `milestone-${originalIndex}-${status}`}
-                          className="flex items-center gap-3 p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors"
+                          className="p-4 border rounded-lg bg-card hover:bg-accent/50 transition-colors space-y-3"
                         >
-                          {/* Status icon - 3 states: pending (gray), in-progress (yellow), completed (green) */}
-                          <button
-                            type="button"
-                            onClick={() => handleToggleMilestone(milestone)}
-                            className="mt-0.5 flex-shrink-0"
-                            aria-label={
-                              status === 'completed' 
-                                ? 'Mark as pending' 
-                                : status === 'in-progress'
-                                ? 'Mark as completed'
-                                : 'Mark as in progress'
-                            }
-                          >
-                            {(() => {
-                              if (status === 'completed') {
-                                return <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />;
-                              } else if (status === 'in-progress') {
-                                return <Circle className="w-5 h-5 text-yellow-500 dark:text-yellow-400" />;
-                              } else {
-                                return <Circle className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />;
+                          <div className="flex items-center gap-3">
+                            {/* Status icon - 3 states: pending (gray), in-progress (yellow), completed (green) */}
+                            <button
+                              type="button"
+                              onClick={() => handleToggleMilestone(milestone)}
+                              className="mt-0.5 flex-shrink-0"
+                              aria-label={
+                                status === 'completed' 
+                                  ? 'Mark as pending' 
+                                  : status === 'in-progress'
+                                  ? 'Mark as completed'
+                                  : 'Mark as in progress'
                               }
-                            })()}
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <span className={`block ${
-                              status === 'completed' ? 'line-through opacity-60' : 'text-foreground'
-                            }`}>
-                              {milestone.name}
-                            </span>
-                            {milestone.dueDate && (
-                              <span className="text-xs text-muted-foreground mt-1 block">
-                                Due: {new Date(milestone.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                              </span>
+                            >
+                              {(() => {
+                                if (status === 'completed') {
+                                  return <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />;
+                                } else if (status === 'in-progress') {
+                                  return <Circle className="w-5 h-5 text-yellow-500 dark:text-yellow-400" />;
+                                } else {
+                                  return <Circle className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />;
+                                }
+                              })()}
+                            </button>
+                            
+                            {isEditing ? (
+                              <div className="flex-1 space-y-2">
+                                <Input
+                                  value={editingMilestoneData.name}
+                                  onChange={(e) => setEditingMilestoneData({ ...editingMilestoneData, name: e.target.value })}
+                                  placeholder="Milestone name"
+                                  className="h-9"
+                                />
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">Start Date</Label>
+                                    <Input
+                                      type="date"
+                                      value={editingMilestoneData.startDate}
+                                      onChange={(e) => {
+                                        const newData = { ...editingMilestoneData, startDate: e.target.value };
+                                        // Auto-calculate days if both dates are set
+                                        if (e.target.value && newData.dueDate) {
+                                          const start = new Date(e.target.value);
+                                          const due = new Date(newData.dueDate);
+                                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                                            const diffTime = due.getTime() - start.getTime();
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                                            newData.daysAllocated = diffDays.toString();
+                                          }
+                                        }
+                                        setEditingMilestoneData(newData);
+                                      }}
+                                      className="h-9 text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">Due Date</Label>
+                                    <Input
+                                      type="date"
+                                      value={editingMilestoneData.dueDate}
+                                      onChange={(e) => {
+                                        const newData = { ...editingMilestoneData, dueDate: e.target.value };
+                                        // Auto-calculate days if both dates are set
+                                        if (newData.startDate && e.target.value) {
+                                          const start = new Date(newData.startDate);
+                                          const due = new Date(e.target.value);
+                                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                                            const diffTime = due.getTime() - start.getTime();
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                                            newData.daysAllocated = diffDays.toString();
+                                          }
+                                        }
+                                        setEditingMilestoneData(newData);
+                                      }}
+                                      className="h-9 text-xs"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">Estimated Hours</Label>
+                                    <Input
+                                      type="number"
+                                      min="0"
+                                      step="0.5"
+                                      placeholder="e.g., 4"
+                                      value={editingMilestoneData.estimatedHours}
+                                      onChange={(e) => setEditingMilestoneData({ ...editingMilestoneData, estimatedHours: e.target.value })}
+                                      className="h-9 text-xs"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label className="text-xs text-muted-foreground">
+                                      Days Allocated
+                                      {editingMilestoneData.startDate && editingMilestoneData.dueDate && (
+                                        <span className="text-xs text-muted-foreground ml-1">(auto)</span>
+                                      )}
+                                    </Label>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      placeholder="Auto from dates"
+                                      value={(() => {
+                                        if (editingMilestoneData.startDate && editingMilestoneData.dueDate) {
+                                          const start = new Date(editingMilestoneData.startDate);
+                                          const due = new Date(editingMilestoneData.dueDate);
+                                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                                            const diffTime = due.getTime() - start.getTime();
+                                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                                            return diffDays > 0 ? diffDays.toString() : '';
+                                          }
+                                        }
+                                        return editingMilestoneData.daysAllocated;
+                                      })()}
+                                      onChange={(e) => setEditingMilestoneData({ ...editingMilestoneData, daysAllocated: e.target.value })}
+                                      disabled={!!(editingMilestoneData.startDate && editingMilestoneData.dueDate)}
+                                      className="h-9 text-xs"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveMilestoneEdit(originalIndex)}
+                                    className="h-8 text-xs"
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleCancelMilestoneEdit}
+                                    className="h-8 text-xs"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex-1 min-w-0">
+                                  <span className={`block ${
+                                    status === 'completed' ? 'line-through opacity-60' : 'text-foreground'
+                                  }`}>
+                                    {milestone.name}
+                                  </span>
+                                  <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
+                                    {milestone.startDate && (
+                                      <span>Start: {new Date(milestone.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                                    )}
+                                    {milestone.dueDate && (
+                                      <span>Due: {new Date(milestone.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    )}
+                                    {milestone.estimatedHours && (
+                                      <span>Est: {milestone.estimatedHours}h</span>
+                                    )}
+                                    {milestone.daysAllocated && milestone.daysAllocated > 1 && (
+                                      <span className="text-blue-600 dark:text-blue-400">
+                                        Day {milestone.currentDay || 1}/{milestone.daysAllocated}
+                                      </span>
+                                    )}
+                                    {milestone.progressPercentage !== null && milestone.progressPercentage !== undefined && (
+                                      <span className="text-green-600 dark:text-green-400">
+                                        Progress: {Math.round(milestone.progressPercentage)}%
+                                      </span>
+                                    )}
+                                    {milestone.actualHoursSpent && (
+                                      <span className="text-orange-600 dark:text-orange-400">
+                                        Spent: {milestone.actualHoursSpent}h
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                    onClick={() => handleEditMilestone(originalIndex)}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                    onClick={() => handleRemoveMilestone(originalIndex)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </>
                             )}
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleRemoveMilestone(originalIndex)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
                         </div>
                       );
                     });

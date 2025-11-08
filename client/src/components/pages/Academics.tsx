@@ -51,6 +51,18 @@ export function Academics() {
     }
   }, [authUser]);
 
+  // Sync selectedCourse when subjects change (e.g., after loadData)
+  // This ensures the AssignmentDialog gets updated assignment data
+  useEffect(() => {
+    if (selectedCourse && assignmentModalOpen && subjects.length > 0) {
+      const updatedCourse = subjects.find(s => s.id === selectedCourse.id);
+      if (updatedCourse && updatedCourse !== selectedCourse) {
+        setSelectedCourse(updatedCourse);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjects, assignmentModalOpen]);
+
   // Listen for assignment events from AI chat to refresh data
   useEffect(() => {
     const handleAssignmentCreated = () => {
@@ -297,6 +309,7 @@ export function Academics() {
         await coursesAPI.createAssignment(selectedCourse.id, data);
       }
       await loadData();
+      // selectedCourse will be updated automatically via useEffect when subjects changes
     } catch (err) {
       console.error('Save assignment failed', err);
       alert('Failed to save assignment');

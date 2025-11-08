@@ -367,13 +367,42 @@ router.get('/:courseId/assignments', async (req: AuthRequest, res) => {
 router.post('/:courseId/assignments', async (req: AuthRequest, res) => {
   try {
     const { courseId } = req.params;
-    const { title, description, dueDate, points } = req.body;
+    const { title, description, startDate, dueDate, points, estimatedHours, status, daysAllocated, progressPercentage, actualHoursSpent } = req.body;
     const course = await prisma.course.findUnique({ where: { id: courseId } });
     if (!course || course.userId !== req.userId) return res.status(404).json({ error: 'Course not found' });
 
-    const item = await prisma.assignment.create({ data: { courseId, title, description, dueDate: dueDate ? new Date(dueDate) : undefined, points } });
+    // Auto-calculate daysAllocated from startDate and dueDate if not provided
+    let calculatedDaysAllocated = daysAllocated;
+    if ((!daysAllocated || daysAllocated === null || daysAllocated === '') && startDate && dueDate) {
+      const start = new Date(startDate);
+      const due = new Date(dueDate);
+      if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+        const diffTime = due.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
+        if (diffDays > 0) {
+          calculatedDaysAllocated = diffDays;
+        }
+      }
+    }
+
+    const item = await prisma.assignment.create({ 
+      data: { 
+        courseId, 
+        title, 
+        description, 
+        startDate: startDate ? new Date(startDate) : null,
+        dueDate: dueDate ? new Date(dueDate) : null, 
+        points: points ? parseInt(points) : null,
+        estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
+        status: status || 'pending',
+        daysAllocated: calculatedDaysAllocated ? parseInt(calculatedDaysAllocated) : null,
+        progressPercentage: progressPercentage ? parseFloat(progressPercentage) : null,
+        actualHoursSpent: actualHoursSpent ? parseFloat(actualHoursSpent) : null
+      } 
+    });
     res.status(201).json(item);
   } catch (error) {
+    console.error('Error creating assignment:', error);
     res.status(500).json({ error: 'Error creating assignment' });
   }
 });
@@ -386,10 +415,136 @@ router.put('/assignments/:id', async (req: AuthRequest, res) => {
     const course = await prisma.course.findUnique({ where: { id: existing.courseId } });
     if (!course || course.userId !== req.userId) return res.status(404).json({ error: 'Not authorized' });
 
-    const updated = await prisma.assignment.update({ where: { id }, data: req.body });
+    // Debug logging
+    console.log('Update assignment request body:', JSON.stringify(req.body, null, 2));
+
+    // Prepare update data - only include valid fields
+    const updateData: any = {};
+    if (req.body.title !== undefined) updateData.title = req.body.title;
+    if (req.body.description !== undefined) updateData.description = req.body.description;
+    
+    // Handle date fields - convert string to Date object or null
+    if (req.body.startDate !== undefined) {
+      if (req.body.startDate && req.body.startDate !== null && req.body.startDate !== '') {
+        const startDate = new Date(req.body.startDate);
+        if (isNaN(startDate.getTime())) {
+          return res.status(400).json({ error: 'Invalid start date format' });
+        }
+        updateData.startDate = startDate;
+      } else {
+        updateData.startDate = null;
+      }
+    }
+    
+    if (req.body.dueDate !== undefined) {
+      if (req.body.dueDate && req.body.dueDate !== null && req.body.dueDate !== '') {
+        const dueDate = new Date(req.body.dueDate);
+        if (isNaN(dueDate.getTime())) {
+          return res.status(400).json({ error: 'Invalid due date format' });
+        }
+        updateData.dueDate = dueDate;
+      } else {
+        updateData.dueDate = null;
+      }
+    }
+    
+    // Handle estimatedHours - fix: 0 is a valid value, don't treat it as falsy
+    if (req.body.estimatedHours !== undefined) {
+      if (req.body.estimatedHours === null || req.body.estimatedHours === '') {
+        updateData.estimatedHours = null;
+      } else {
+        const hours = parseFloat(req.body.estimatedHours);
+        updateData.estimatedHours = isNaN(hours) ? null : hours;
+      }
+    }
+    
+    if (req.body.status !== undefined) updateData.status = req.body.status;
+    
+    // Handle points - fix: 0 is a valid value
+    if (req.body.points !== undefined) {
+      if (req.body.points === null || req.body.points === '') {
+        updateData.points = null;
+      } else {
+        const points = parseInt(req.body.points);
+        updateData.points = isNaN(points) ? null : points;
+      }
+    }
+    
+    // Handle progress tracking fields
+    if (req.body.progressPercentage !== undefined) {
+      if (req.body.progressPercentage === null || req.body.progressPercentage === '') {
+        updateData.progressPercentage = null;
+      } else {
+        const progress = parseFloat(req.body.progressPercentage);
+        // Ensure progress is between 0 and 100
+        updateData.progressPercentage = isNaN(progress) ? null : Math.max(0, Math.min(100, progress));
+      }
+    }
+    
+    if (req.body.actualHoursSpent !== undefined) {
+      if (req.body.actualHoursSpent === null || req.body.actualHoursSpent === '') {
+        updateData.actualHoursSpent = null;
+      } else {
+        const hours = parseFloat(req.body.actualHoursSpent);
+        updateData.actualHoursSpent = isNaN(hours) ? null : Math.max(0, hours);
+      }
+    }
+    
+    // Auto-calculate daysAllocated from startDate and dueDate if not provided
+    if (req.body.daysAllocated === undefined || req.body.daysAllocated === null || req.body.daysAllocated === '') {
+      // Try to calculate from dates
+      const startDate = updateData.startDate !== undefined ? updateData.startDate : existing.startDate;
+      const dueDate = updateData.dueDate !== undefined ? updateData.dueDate : existing.dueDate;
+      
+      if (startDate && dueDate) {
+        const start = new Date(startDate);
+        const due = new Date(dueDate);
+        if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+          const diffTime = due.getTime() - start.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
+          if (diffDays > 0) {
+            updateData.daysAllocated = diffDays;
+          }
+        }
+      }
+    } else {
+      // Use provided daysAllocated
+      const days = parseInt(req.body.daysAllocated);
+      updateData.daysAllocated = isNaN(days) ? null : Math.max(1, days);
+    }
+    
+    // Reset currentDay if daysAllocated is being removed
+    if (updateData.daysAllocated === null) {
+      updateData.currentDay = null;
+    }
+    
+    if (req.body.currentDay !== undefined) {
+      if (req.body.currentDay === null || req.body.currentDay === '') {
+        updateData.currentDay = null;
+      } else {
+        const day = parseInt(req.body.currentDay);
+        updateData.currentDay = isNaN(day) ? null : Math.max(1, day);
+      }
+    }
+    
+    // Auto-calculate currentDay based on progressPercentage and daysAllocated if not provided
+    if (updateData.progressPercentage !== undefined && updateData.daysAllocated !== undefined && 
+        updateData.currentDay === undefined && updateData.progressPercentage !== null && 
+        updateData.daysAllocated !== null) {
+      const progress = updateData.progressPercentage;
+      const days = updateData.daysAllocated;
+      // Calculate which day we're on based on progress (e.g., 33% = day 1 of 3, 66% = day 2 of 3)
+      updateData.currentDay = Math.ceil((progress / 100) * days) || 1;
+    }
+
+    console.log('Update data being sent to Prisma:', JSON.stringify(updateData, null, 2));
+
+    const updated = await prisma.assignment.update({ where: { id }, data: updateData });
+    console.log('Updated assignment:', JSON.stringify(updated, null, 2));
     res.json(updated);
-  } catch (error) {
-    res.status(500).json({ error: 'Error updating assignment' });
+  } catch (error: any) {
+    console.error('Error updating assignment:', error);
+    res.status(500).json({ error: error.message || 'Error updating assignment' });
   }
 });
 

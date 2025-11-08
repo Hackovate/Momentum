@@ -264,6 +264,11 @@ Create a comprehensive roadmap including:
    - Order them from beginner to advanced
    - Make them specific and actionable
    - Example progression: "Learn basics" → "Build first project" → "Advanced concepts" → "Real-world application"
+   - For each milestone, estimate:
+     * estimatedHours: Realistic hours needed (typically 2-8 hours per milestone)
+     * dueDate: Calculate based on milestone order and total duration (spread evenly)
+     * startDate: Previous milestone's dueDate (or skill startDate for first milestone)
+     * daysAllocated: Auto-calculated from startDate to dueDate (typically 3-7 days per milestone)
 
 4. Learning Resources (2-4 resources):
    - Include mix of: tutorials, documentation, video courses, practice platforms
@@ -283,8 +288,22 @@ Return ONLY a JSON object with this exact structure:
   "startDate": "{current_date_iso}",
   "endDate": "YYYY-MM-DD",
   "milestones": [
-    {{"name": "Milestone 1", "order": 0}},
-    {{"name": "Milestone 2", "order": 1}},
+    {{
+      "name": "Milestone 1",
+      "order": 0,
+      "estimatedHours": 4,
+      "startDate": "{current_date_iso}",
+      "dueDate": "YYYY-MM-DD (7 days from start)",
+      "daysAllocated": 7
+    }},
+    {{
+      "name": "Milestone 2",
+      "order": 1,
+      "estimatedHours": 6,
+      "startDate": "YYYY-MM-DD (previous dueDate)",
+      "dueDate": "YYYY-MM-DD (7 days from startDate)",
+      "daysAllocated": 7
+    }},
     ...
   ],
   "resources": [

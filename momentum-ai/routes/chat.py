@@ -245,7 +245,7 @@ Actions:
 ACTIONS (include in Actions: JSON array):
 - update_user: {{"type":"update_user","data":{{"firstName":"..."}}}}
 - add_course: {{"type":"add_course","data":{{"name":"..." OR "courseName":"...","code":"..." OR "courseCode":"..." (optional),"description":"..." (optional),"group":"science|commerce|arts" (for school/college),"credits":N (optional, default 3 for university),"semester":"1"|"2"|"3"|"4"|"5"|"6"|"7"|"8" (optional, for university),"year":1|2|3|4 (optional, for university),"status":"ongoing|completed|dropped" (optional, default "ongoing"),"progress":0-100 (optional, default 0),"attendance":0-100 (optional, default 0)}}}}
-- add_skill: {{"type":"add_skill","data":{{"name":"...","category":"Technical|Creative|Soft Skills|Business|Language|Other","level":"beginner|intermediate|advanced|expert","description":"...","goalStatement":"...","durationMonths":N,"estimatedHours":N,"startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","milestones":[{{"name":"...","order":0}}],"resources":[{{"title":"...","type":"link|video|note","url":"...","description":"..."}}]}}}}
+- add_skill: {{"type":"add_skill","data":{{"name":"...","category":"Technical|Creative|Soft Skills|Business|Language|Other","level":"beginner|intermediate|advanced|expert","description":"...","goalStatement":"...","durationMonths":N,"estimatedHours":N,"startDate":"YYYY-MM-DD","endDate":"YYYY-MM-DD","milestones":[{{"name":"...","order":0,"estimatedHours":N (2-8 hours per milestone),"startDate":"YYYY-MM-DD","dueDate":"YYYY-MM-DD","daysAllocated":N (auto-calculated from dates, typically 3-7 days)}}],"resources":[{{"title":"...","type":"link|video|note","url":"...","description":"..."}}]}}}}
 - add_expense: {{"type":"add_expense","data":{{"amount":N,"category":"Food|Transport|Entertainment|Shopping|Bills|Education|Health|Other","description":"...","date":"YYYY-MM-DD","paymentMethod":"cash|card|digital|bank_transfer","recurring":false,"frequency":"weekly|monthly|yearly"}}}}
 - update_expense: {{"type":"update_expense","data":{{"finance_id":"..." OR "description":"..." (find by description if ID not provided),"amount":N,"category":"Food|Transport|Entertainment|Shopping|Bills|Education|Health|Other","description":"...","date":"YYYY-MM-DD"}}}}
 - add_income: {{"type":"add_income","data":{{"amount":N,"category":"Salary|Freelance|Gift|Other","description":"...","date":"YYYY-MM-DD","paymentMethod":"cash|card|digital|bank_transfer"}}}}
@@ -296,7 +296,7 @@ SKILL CREATION RULES:
   - endDate (calculate: startDate + durationMonths)
   - description (brief, from goal)
   - goalStatement (specific learning goal)
-  - milestones (3-5 progressive)
+  - milestones (3-5 progressive, each with estimatedHours 2-8h, startDate, dueDate, daysAllocated)
   - resources (2-4 learning resources)
 
   If user provides partial info → Ask for missing pieces, DO NOT create yet.

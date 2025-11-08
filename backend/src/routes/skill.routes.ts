@@ -106,8 +106,23 @@ router.post('/', async (req: AuthRequest, res) => {
     // Create milestones if provided
     if (milestones && Array.isArray(milestones)) {
       await Promise.all(
-        milestones.map((milestone: any, index: number) =>
-          prisma.milestone.create({
+        milestones.map((milestone: any, index: number) => {
+          // Auto-calculate daysAllocated from dates if not provided
+          let calculatedDaysAllocated = milestone.daysAllocated;
+          if ((!calculatedDaysAllocated || calculatedDaysAllocated === null || calculatedDaysAllocated === '') && 
+              milestone.startDate && milestone.dueDate) {
+            const start = new Date(milestone.startDate);
+            const due = new Date(milestone.dueDate);
+            if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+              const diffTime = due.getTime() - start.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+              if (diffDays > 0) {
+                calculatedDaysAllocated = diffDays;
+              }
+            }
+          }
+          
+          return prisma.milestone.create({
             data: {
               skillId: skill.id,
               userId: req.userId!,
@@ -115,10 +130,16 @@ router.post('/', async (req: AuthRequest, res) => {
               completed: milestone.completed || false,
               status: milestone.status || (milestone.completed ? 'completed' : 'pending'),
               dueDate: milestone.dueDate ? new Date(milestone.dueDate) : null,
-              order: index
+              startDate: milestone.startDate ? new Date(milestone.startDate) : null,
+              order: index,
+              estimatedHours: milestone.estimatedHours ? parseFloat(milestone.estimatedHours) : null,
+              progressPercentage: milestone.progressPercentage !== undefined ? Math.max(0, Math.min(100, parseFloat(milestone.progressPercentage))) : null,
+              actualHoursSpent: milestone.actualHoursSpent ? parseFloat(milestone.actualHoursSpent) : null,
+              daysAllocated: calculatedDaysAllocated ? parseInt(calculatedDaysAllocated) : null,
+              currentDay: milestone.currentDay ? parseInt(milestone.currentDay) : null
             }
-          })
-        )
+          });
+        })
       );
     }
 
@@ -281,7 +302,19 @@ router.get('/:skillId/milestones', async (req: AuthRequest, res) => {
 router.post('/:skillId/milestones', async (req: AuthRequest, res) => {
   try {
     const { skillId } = req.params;
-    const { name, completed, status, dueDate, order } = req.body;
+    const { 
+      name, 
+      completed, 
+      status, 
+      dueDate, 
+      startDate,
+      order,
+      estimatedHours,
+      progressPercentage,
+      actualHoursSpent,
+      daysAllocated,
+      currentDay
+    } = req.body;
 
     const skill = await prisma.skill.findUnique({ where: { id: skillId } });
     if (!skill || skill.userId !== req.userId) {
@@ -291,6 +324,20 @@ router.post('/:skillId/milestones', async (req: AuthRequest, res) => {
     // Use status if provided, otherwise derive from completed boolean for backward compatibility
     const milestoneStatus = status || (completed ? 'completed' : 'pending');
 
+    // Auto-calculate daysAllocated from startDate and dueDate if not provided
+    let calculatedDaysAllocated = daysAllocated;
+    if ((!daysAllocated || daysAllocated === null || daysAllocated === '') && startDate && dueDate) {
+      const start = new Date(startDate);
+      const due = new Date(dueDate);
+      if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+        const diffTime = due.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
+        if (diffDays > 0) {
+          calculatedDaysAllocated = diffDays;
+        }
+      }
+    }
+
     const milestone = await prisma.milestone.create({
       data: {
         skillId,
@@ -299,7 +346,13 @@ router.post('/:skillId/milestones', async (req: AuthRequest, res) => {
         completed: completed || false, // Keep for backward compatibility
         status: milestoneStatus,
         dueDate: dueDate ? new Date(dueDate) : null,
-        order: order || 0
+        startDate: startDate ? new Date(startDate) : null,
+        order: order !== undefined ? order : 0,
+        estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
+        progressPercentage: progressPercentage !== undefined ? Math.max(0, Math.min(100, parseFloat(progressPercentage))) : null,
+        actualHoursSpent: actualHoursSpent ? parseFloat(actualHoursSpent) : null,
+        daysAllocated: calculatedDaysAllocated ? parseInt(calculatedDaysAllocated) : null,
+        currentDay: currentDay ? parseInt(currentDay) : null
       }
     });
 
@@ -323,10 +376,24 @@ router.put('/milestones/:id', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Milestone not found' });
     }
 
-    const { name, completed, status, dueDate, order } = req.body;
+    const { 
+      name, 
+      completed, 
+      status, 
+      dueDate, 
+      startDate,
+      order,
+      estimatedHours,
+      progressPercentage,
+      actualHoursSpent,
+      daysAllocated,
+      currentDay
+    } = req.body;
 
     // Build update data
-    const updateData: any = { name, order };
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (order !== undefined) updateData.order = order;
     
     // Handle status - if status is provided, use it; otherwise derive from completed
     if (status !== undefined) {
@@ -337,8 +404,84 @@ router.put('/milestones/:id', async (req: AuthRequest, res) => {
       updateData.status = completed ? 'completed' : 'pending'; // Derive status from completed
     }
     
+    // Handle date fields
     if (dueDate !== undefined) {
       updateData.dueDate = dueDate ? new Date(dueDate) : null;
+    }
+    if (startDate !== undefined) {
+      updateData.startDate = startDate ? new Date(startDate) : null;
+    }
+    
+    // Handle progress tracking fields
+    if (progressPercentage !== undefined) {
+      if (progressPercentage === null || progressPercentage === '') {
+        updateData.progressPercentage = null;
+      } else {
+        const progress = parseFloat(progressPercentage);
+        updateData.progressPercentage = isNaN(progress) ? null : Math.max(0, Math.min(100, progress));
+      }
+    }
+    
+    if (estimatedHours !== undefined) {
+      if (estimatedHours === null || estimatedHours === '') {
+        updateData.estimatedHours = null;
+      } else {
+        const hours = parseFloat(estimatedHours);
+        updateData.estimatedHours = isNaN(hours) ? null : hours;
+      }
+    }
+    
+    if (actualHoursSpent !== undefined) {
+      if (actualHoursSpent === null || actualHoursSpent === '') {
+        updateData.actualHoursSpent = null;
+      } else {
+        const hours = parseFloat(actualHoursSpent);
+        updateData.actualHoursSpent = isNaN(hours) ? null : Math.max(0, hours);
+      }
+    }
+    
+    // Auto-calculate daysAllocated from startDate and dueDate if not provided
+    if (daysAllocated === undefined || daysAllocated === null || daysAllocated === '') {
+      const start = updateData.startDate !== undefined ? updateData.startDate : existing.startDate;
+      const due = updateData.dueDate !== undefined ? updateData.dueDate : existing.dueDate;
+      
+      if (start && due) {
+        const startDate = new Date(start);
+        const dueDate = new Date(due);
+        if (!isNaN(startDate.getTime()) && !isNaN(dueDate.getTime()) && dueDate >= startDate) {
+          const diffTime = dueDate.getTime() - startDate.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
+          if (diffDays > 0) {
+            updateData.daysAllocated = diffDays;
+          }
+        }
+      }
+    } else {
+      const days = parseInt(daysAllocated);
+      updateData.daysAllocated = isNaN(days) ? null : Math.max(1, days);
+    }
+    
+    // Reset currentDay if daysAllocated is being removed
+    if (updateData.daysAllocated === null) {
+      updateData.currentDay = null;
+    }
+    
+    if (currentDay !== undefined) {
+      if (currentDay === null || currentDay === '') {
+        updateData.currentDay = null;
+      } else {
+        const day = parseInt(currentDay);
+        updateData.currentDay = isNaN(day) ? null : Math.max(1, day);
+      }
+    }
+    
+    // Auto-calculate currentDay based on progressPercentage and daysAllocated if not provided
+    if (updateData.progressPercentage !== undefined && updateData.daysAllocated !== undefined && 
+        updateData.currentDay === undefined && updateData.progressPercentage !== null && 
+        updateData.daysAllocated !== null) {
+      const progress = updateData.progressPercentage;
+      const days = updateData.daysAllocated;
+      updateData.currentDay = Math.ceil((progress / 100) * days) || 1;
     }
 
     const milestone = await prisma.milestone.update({

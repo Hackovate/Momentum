@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -46,14 +46,41 @@ export function AssignmentDialog({
     startDate: '',
     dueDate: '',
     estimatedHours: '',
+    daysAllocated: '',
     status: 'pending',
   });
 
   const [activeTab, setActiveTab] = useState('add');
   const [activeSubTab, setActiveSubTab] = useState<'all' | 'exam-prep' | 'study-plan'>('all');
 
+  // Helper function to format date for input field
+  const formatDateForInput = (date: string | Date | null | undefined): string => {
+    if (!date) return '';
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return '';
+      return dateObj.toISOString().split('T')[0];
+    } catch {
+      return '';
+    }
+  };
+
+  // Helper function to populate form from assignment
+  const populateFormFromAssignment = (assignment: any) => {
+    setFormData({
+      title: assignment.title || '',
+      description: assignment.description || '',
+      startDate: formatDateForInput(assignment.startDate),
+      dueDate: formatDateForInput(assignment.dueDate),
+      estimatedHours: assignment.estimatedHours?.toString() || '',
+      daysAllocated: assignment.daysAllocated?.toString() || '',
+      status: assignment.status || 'pending',
+    });
+    setActiveTab('add');
+  };
+
   useEffect(() => {
-    // Reset form when dialog opens/closes
+    // Reset form when dialog closes
     if (!open) {
       setFormData({
         title: '',
@@ -61,26 +88,74 @@ export function AssignmentDialog({
         startDate: '',
         dueDate: '',
         estimatedHours: '',
+        daysAllocated: '',
         status: 'pending',
       });
       setActiveTab('add');
     } else if (open && editingAssignment) {
       // If editing assignment is passed from parent, populate form
-      setFormData({
-        title: editingAssignment.title || '',
-        description: editingAssignment.description || '',
-        startDate: editingAssignment.startDate ? new Date(editingAssignment.startDate).toISOString().split('T')[0] : '',
-        dueDate: editingAssignment.dueDate ? new Date(editingAssignment.dueDate).toISOString().split('T')[0] : '',
-        estimatedHours: editingAssignment.estimatedHours?.toString() || '',
-        status: editingAssignment.status || 'pending',
-      });
-      setActiveTab('add');
+      populateFormFromAssignment(editingAssignment);
     }
   }, [open, editingAssignment]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Prepare data for submission - always include all fields explicitly
+    // Convert empty strings to null for optional fields
+    const estimatedHoursStr = String(formData.estimatedHours || '').trim();
+    let estimatedHoursValue: number | null = null;
+    if (estimatedHoursStr !== '') {
+      const parsed = parseFloat(estimatedHoursStr);
+      if (!isNaN(parsed)) {
+        estimatedHoursValue = parsed;
+      }
+    }
+    
+    const startDateValue = formData.startDate && formData.startDate.trim() !== '' 
+      ? formData.startDate.trim() 
+      : null;
+    const dueDateValue = formData.dueDate && formData.dueDate.trim() !== '' 
+      ? formData.dueDate.trim() 
+      : null;
+    
+    // Auto-calculate daysAllocated from start date to due date
+    let daysAllocatedValue: number | null = null;
+    if (startDateValue && dueDateValue) {
+      const start = new Date(startDateValue);
+      const due = new Date(dueDateValue);
+      if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+        // Calculate days including both start and end dates
+        const diffTime = due.getTime() - start.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both days
+        daysAllocatedValue = diffDays > 0 ? diffDays : null;
+      }
+    }
+    
+    // If manual daysAllocated is provided and no dates, use it
+    if (!daysAllocatedValue) {
+      const daysAllocatedStr = String(formData.daysAllocated || '').trim();
+      if (daysAllocatedStr !== '') {
+        const parsed = parseInt(daysAllocatedStr);
+        if (!isNaN(parsed) && parsed > 0) {
+          daysAllocatedValue = parsed;
+        }
+      }
+    }
+    
+    // Always include all fields in the request, even if null
+    const submitData: any = {
+      title: formData.title,
+      description: formData.description && formData.description.trim() !== '' ? formData.description.trim() : null,
+      startDate: startDateValue,
+      dueDate: dueDateValue,
+      estimatedHours: estimatedHoursValue,
+      daysAllocated: daysAllocatedValue,
+      status: formData.status,
+    };
+    
+    console.log('Submitting assignment data:', JSON.stringify(submitData, null, 2));
+    onSave(submitData);
     // Reset form after save
     setFormData({
       title: '',
@@ -88,6 +163,7 @@ export function AssignmentDialog({
       startDate: '',
       dueDate: '',
       estimatedHours: '',
+      daysAllocated: '',
       status: 'pending',
     });
     // Switch to assignments tab to see the new/updated assignment
@@ -95,10 +171,11 @@ export function AssignmentDialog({
   };
 
   const handleEditClick = (assignment: any) => {
+    // Immediately populate the form with assignment data
+    populateFormFromAssignment(assignment);
     // Notify parent to set this assignment for editing
     onEdit(assignment);
     setActiveTab('add');
-    // The useEffect will populate the form when editingAssignment prop changes
   };
 
   const handleDeleteClick = (assignmentId: string) => {
@@ -166,6 +243,9 @@ export function AssignmentDialog({
           <DialogTitle className="text-lg">
             Assignments & Tasks
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            Manage assignments and tasks for {courseName}
+          </DialogDescription>
           <p className="text-sm text-muted-foreground">{courseName}</p>
         </DialogHeader>
         
@@ -233,8 +313,8 @@ export function AssignmentDialog({
                 </div>
               </div>
 
-              {/* Estimated Time and Status */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Estimated Time, Days Allocated, and Status */}
+              <div className="grid grid-cols-3 gap-3">
                 {/* Estimated Time */}
                 <div>
                   <Label htmlFor="estimatedHours" className="text-sm">Est. Hours</Label>
@@ -248,6 +328,57 @@ export function AssignmentDialog({
                     placeholder="e.g., 5"
                     className="mt-1"
                   />
+                </div>
+
+                {/* Days Allocated - Auto-calculated from dates or manual entry */}
+                <div>
+                  <Label htmlFor="daysAllocated" className="text-sm">
+                    Days Allocated
+                    {formData.startDate && formData.dueDate && (
+                      <span className="text-xs text-muted-foreground ml-1">(auto)</span>
+                    )}
+                  </Label>
+                  <Input
+                    id="daysAllocated"
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={(() => {
+                      // Auto-calculate if both dates are present
+                      if (formData.startDate && formData.dueDate) {
+                        const start = new Date(formData.startDate);
+                        const due = new Date(formData.dueDate);
+                        if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                          const diffTime = due.getTime() - start.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                          return diffDays > 0 ? diffDays.toString() : '';
+                        }
+                      }
+                      return formData.daysAllocated;
+                    })()}
+                    onChange={(e) => setFormData({ ...formData, daysAllocated: e.target.value })}
+                    placeholder="Auto from dates"
+                    className="mt-1"
+                    disabled={!!(formData.startDate && formData.dueDate)}
+                  />
+                  {(() => {
+                    const days = formData.startDate && formData.dueDate
+                      ? (() => {
+                          const start = new Date(formData.startDate);
+                          const due = new Date(formData.dueDate);
+                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                            const diffTime = due.getTime() - start.getTime();
+                            return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                          }
+                          return parseInt(formData.daysAllocated) || 0;
+                        })()
+                      : parseInt(formData.daysAllocated) || 0;
+                    return days > 0 && formData.estimatedHours && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        ~{Math.round((parseFloat(formData.estimatedHours) || 0) / days * 10) / 10}h/day
+                      </p>
+                    );
+                  })()}
                 </div>
 
                 {/* Status */}
