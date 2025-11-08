@@ -59,8 +59,24 @@ export async function ingestDocs(payload: IngestRequest): Promise<{ status: stri
 }
 
 export async function planDay(payload: any): Promise<any> {
-  const { data } = await http.post('/plan', payload);
-  return data;
+  try {
+    console.log('Calling AI service /plan with payload:', JSON.stringify(payload, null, 2).substring(0, 500));
+    const { data } = await http.post('/plan', payload);
+    return data;
+  } catch (error: any) {
+    console.error('AI service planDay error:', {
+      message: error.message,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      config: {
+        url: error.config?.url,
+        method: error.config?.method,
+        baseURL: error.config?.baseURL
+      }
+    });
+    throw error;
+  }
 }
 
 export async function rebalanceDay(payload: any): Promise<any> {

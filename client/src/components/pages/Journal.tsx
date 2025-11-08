@@ -147,17 +147,17 @@ export function Journal() {
   }));
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-foreground text-2xl mb-0.5">Self-Journal & Reflection</h1>
-          <p className="text-muted-foreground text-sm">Document your thoughts, feelings, and personal growth</p>
+          <h1 className="text-foreground text-3xl md:text-4xl font-bold mb-2">Self-Journal & Reflection</h1>
+          <p className="text-muted-foreground text-base">Document your thoughts, feelings, and personal growth</p>
         </div>
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all">
               <Plus className="w-4 h-4" />
               New Entry
             </Button>
@@ -299,7 +299,7 @@ export function Journal() {
       </div>
 
       {/* Search */}
-      <Card className="p-3 border-border bg-card">
+      <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input

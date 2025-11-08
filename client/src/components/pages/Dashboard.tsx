@@ -325,27 +325,30 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-6">
       {/* Greeting */}
-      <div>
-        <h1 className="text-foreground text-2xl mb-0.5">{greeting}, {userName} ☀️</h1>
-        <p className="text-muted-foreground text-sm">Here's what's happening with your student life today</p>
+      <div className="mb-6">
+        <h1 className="text-foreground text-3xl md:text-4xl font-bold mb-2">
+          {greeting}, {userName} 
+          <span className="ml-2">☀️</span>
+        </h1>
+        <p className="text-muted-foreground text-base">Here's what's happening with your student life today</p>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat, index) => (
           <StatCard key={index} {...stat} />
         ))}
       </div>
 
       {/* Quick Actions */}
-      <Card className="p-3 border-border bg-card">
-          <h2 className="text-foreground mb-2 text-lg">Quick Actions</h2>
-          <div className="space-y-2">
+      <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
+          <h2 className="text-foreground mb-4 text-xl font-semibold">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button 
               variant="outline" 
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 h-12 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => setIsTaskModalOpen(true)}
             >
               <Plus className="w-4 h-4" />
@@ -353,7 +356,7 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
             </Button>
             <Button 
               variant="outline" 
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 h-12 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => setIsExpenseModalOpen(true)}
             >
               <Plus className="w-4 h-4" />
@@ -361,7 +364,7 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
             </Button>
             <Button 
               variant="outline" 
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 h-12 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => setIsJournalModalOpen(true)}
             >
               <Plus className="w-4 h-4" />
@@ -369,7 +372,7 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
             </Button>
             <Button 
               variant="outline" 
-              className="w-full justify-start gap-2"
+              className="w-full justify-start gap-2 h-12 hover:bg-primary/5 hover:border-primary/50 transition-all"
               onClick={() => navigate('/analytics')}
             >
               <TrendingUp className="w-4 h-4" />
@@ -379,34 +382,36 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
         </Card>
 
       {/* Upcoming Tasks & Academic Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Upcoming Tasks */}
-        <Card className="p-3 border-border bg-card">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-foreground text-lg">Upcoming Tasks</h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/planner')}>View All</Button>
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-foreground text-xl font-semibold">Upcoming Tasks</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/planner')} className="hover:text-primary">
+              View All
+            </Button>
           </div>
           
           {upcomingTasks.length === 0 ? (
-            <div className="py-4 text-center">
-              <p className="text-muted-foreground mb-1.5 text-sm">No tasks scheduled</p>
-              <Button variant="outline" size="sm" onClick={() => navigate('/planner')}>
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground mb-3 text-sm">No tasks scheduled</p>
+              <Button variant="outline" size="sm" onClick={() => navigate('/planner')} className="hover:bg-primary/5 hover:border-primary/50">
                 <Plus className="w-3 h-3 mr-1.5" />
                 Add Your First Task
               </Button>
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-3">
               {upcomingTasks.map((task: any) => (
-                <div key={task.id} className="flex items-center justify-between p-2 bg-accent rounded-lg hover:bg-accent/80 transition-colors">
+                <div key={task.id} className="flex items-center justify-between p-4 bg-accent/50 rounded-lg hover:bg-accent transition-all border border-border/50">
                   <div className="flex-1">
-                    <p className="text-foreground text-xs mb-0.5">{task.title}</p>
+                    <p className="text-foreground text-sm font-medium mb-1">{task.title}</p>
                     <p className="text-muted-foreground text-xs">
                       {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
                       {task.description && ` • ${task.description.substring(0, 25)}...`}
                     </p>
                   </div>
-                  <Badge className={`${getPriorityColor(task.priority || 'medium')} text-xs`} variant="secondary">
+                  <Badge className={`${getPriorityColor(task.priority || 'medium')} text-xs ml-2`} variant="secondary">
                     {task.priority || 'medium'}
                   </Badge>
                 </div>
@@ -416,31 +421,33 @@ export function Dashboard({ onNavigate }: DashboardProps = {}) {
         </Card>
 
         {/* Academic Progress */}
-        <Card className="p-3 border-border bg-card">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-foreground text-lg">Academic Progress</h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/academics')}>View All</Button>
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-foreground text-xl font-semibold">Academic Progress</h2>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/academics')} className="hover:text-primary">
+              View All
+            </Button>
           </div>
           
           {courses.length === 0 ? (
-            <div className="py-4 text-center">
-              <p className="text-muted-foreground mb-1.5 text-sm">No courses tracked yet</p>
-              <Button variant="outline" size="sm" onClick={() => navigate('/academics')}>
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground mb-3 text-sm">No courses tracked yet</p>
+              <Button variant="outline" size="sm" onClick={() => navigate('/academics')} className="hover:bg-primary/5 hover:border-primary/50">
                 <Plus className="w-3 h-3 mr-1.5" />
                 Add Course
               </Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-4">
               {courses.slice(0, 4).map((course: any) => (
                 <div key={course.id}>
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-foreground">{course.courseName}</span>
-                    <span className="text-muted-foreground">{course.progress || 0}%</span>
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-foreground font-medium">{course.courseName}</span>
+                    <span className="text-muted-foreground font-semibold">{course.progress || 0}%</span>
                   </div>
-                  <div className="w-full bg-muted rounded-full h-1.5">
+                  <div className="w-full bg-muted rounded-full h-2">
                     <div
-                      className="bg-primary h-1.5 rounded-full transition-all"
+                      className="bg-primary h-2 rounded-full transition-all shadow-sm"
                       style={{ width: `${course.progress || 0}%` }}
                     ></div>
                   </div>

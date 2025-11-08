@@ -1,6 +1,6 @@
 # models.py
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import List, Optional, Union
+from pydantic import BaseModel, Field, model_validator
 
 # Document ingestion models
 class DocItem(BaseModel):
@@ -18,14 +18,44 @@ class TimeRange(BaseModel):
     end_iso: str
 
 class Task(BaseModel):
-    id: Optional[str]
+    id: Optional[str] = None
     title: str
+    description: Optional[str] = None
     type: Optional[str] = "study"
     subject_id: Optional[str] = None
     estimated_minutes: Optional[int] = 30
-    priority: Optional[int] = 3
+    estimated_hours: Optional[float] = None
+    estimatedHours: Optional[float] = None  # Accept both snake_case and camelCase
+    priority: Optional[Union[str, int]] = "medium"  # Accept string (high/medium/low) or int
     deadline_iso: Optional[str] = None
+    dueDate: Optional[str] = None  # Accept camelCase version (maps to deadline_iso)
+    startDate: Optional[str] = None
     notes: Optional[str] = None
+    source: Optional[str] = None
+    status: Optional[str] = None
+    progressPercentage: Optional[float] = None
+    actualMinutesSpent: Optional[int] = None
+    daysAllocated: Optional[int] = None
+    currentDay: Optional[int] = None
+    sourceId: Optional[str] = None
+    
+    @model_validator(mode='before')
+    @classmethod
+    def sync_fields(cls, data):
+        # If dueDate is provided but deadline_iso is not, use dueDate
+        if isinstance(data, dict):
+            if data.get('dueDate') and not data.get('deadline_iso'):
+                data['deadline_iso'] = data['dueDate']
+            # Sync estimatedHours to estimated_hours if needed
+            if data.get('estimatedHours') and not data.get('estimated_hours'):
+                data['estimated_hours'] = data['estimatedHours']
+        return data
+    
+    class Config:
+        # Ignore extra fields that might be sent
+        extra = "ignore"
+        # Allow population by field name (for backward compatibility)
+        populate_by_name = True
 
 class PlanRequest(BaseModel):
     user_id: str
@@ -34,6 +64,9 @@ class PlanRequest(BaseModel):
     tasks: List[Task]
     classes: Optional[List[Task]] = []
     preferences: Optional[dict] = {}
+    user_profile: Optional[dict] = {}
+    task_patterns: Optional[List[dict]] = []
+    completion_history: Optional[dict] = {}
 
 class PlanResponse(BaseModel):
     user_id: str
@@ -41,7 +74,8 @@ class PlanResponse(BaseModel):
     summary: str
     schedule: List[dict]
     suggestions: List[str]
-    rebalanced_tasks: List[dict]
+    rebalanced_tasks: List[dict] = []
+    shifted_tasks: List[dict] = []  # Tasks shifted to next day with new dates
     metadata: dict
 
 class CompleteReq(BaseModel):

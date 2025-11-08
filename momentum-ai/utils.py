@@ -393,6 +393,151 @@ def summarize_long_context(context_text: str, max_length: int = 1000) -> str:
     return f"{context_text[:half]}...\n[Context truncated for efficiency]\n...{context_text[-half:]}"
 
 
+def polish_context(context_docs: list, min_similarity: float = 0.65) -> list:
+    """
+    Polish and clean context documents to remove junk data and duplicates.
+    Prevents overfitting by ensuring high-quality, relevant context only.
+    
+    Args:
+        context_docs: List of document dictionaries with 'text', 'meta', 'similarity', etc.
+        min_similarity: Minimum similarity score to keep (default 0.65)
+    
+    Returns:
+        Polished list of context documents
+    """
+    if not context_docs:
+        return []
+    
+    polished = []
+    seen_texts = set()
+    
+    for doc in context_docs:
+        text = doc.get('text', '').strip()
+        
+        # Skip empty or very short texts (likely junk)
+        if not text or len(text) < 20:
+            continue
+        
+        # Skip low-relevance documents
+        similarity = doc.get('similarity', 0)
+        combined_score = doc.get('combined_score', similarity)
+        if similarity < min_similarity or combined_score < 0.5:
+            continue
+        
+        # Remove formatting artifacts and noise
+        # Remove excessive whitespace
+        text = ' '.join(text.split())
+        
+        # Skip if text is mostly special characters or numbers (likely junk)
+        if len([c for c in text if c.isalnum()]) < len(text) * 0.3:
+            continue
+        
+        # Deduplicate: skip if we've seen very similar text
+        text_hash = hash(text.lower()[:100])  # Hash first 100 chars for dedup
+        if text_hash in seen_texts:
+            continue
+        seen_texts.add(text_hash)
+        
+        # Clean the text
+        doc['text'] = text
+        polished.append(doc)
+    
+    # Sort by combined score (highest first)
+    polished.sort(key=lambda x: x.get('combined_score', 0), reverse=True)
+    
+    return polished
+
+
+def format_context_for_prompt(context_docs: list, user_profile: dict = None, completion_history: dict = None, max_length: int = 2500) -> str:
+    """
+    Format context documents into a structured, polished prompt section.
+    Organizes context into clear sections and removes redundant information.
+    
+    Args:
+        context_docs: List of polished context documents
+        user_profile: User profile dictionary (optional)
+        completion_history: Completion history dictionary (optional)
+        max_length: Maximum total context length in characters
+    
+    Returns:
+        Formatted context string ready for AI prompt
+    """
+    sections = []
+    total_length = 0
+    
+    # Section 1: User Profile (if available)
+    if user_profile:
+        profile_parts = []
+        if user_profile.get("educationLevel"):
+            edu_info = f"Education Level: {user_profile.get('educationLevel')}"
+            if user_profile.get("institution"):
+                edu_info += f" at {user_profile.get('institution')}"
+            if user_profile.get("major"):
+                edu_info += f", Major: {user_profile.get('major')}"
+            if user_profile.get("year"):
+                edu_info += f", Year: {user_profile.get('year')}"
+            profile_parts.append(edu_info)
+        
+        if profile_parts:
+            profile_section = "User Profile:\n" + "\n".join(profile_parts)
+            if total_length + len(profile_section) <= max_length:
+                sections.append(profile_section)
+                total_length += len(profile_section)
+    
+    # Section 2: Task Completion History (if available)
+    if completion_history:
+        history_parts = []
+        avg_completion = completion_history.get("averageDailyCompletion", 0.7)
+        typical_capacity = completion_history.get("typicalCapacity", "N/A")
+        
+        history_parts.append(f"- Average daily completion rate: {avg_completion:.1%}")
+        if typical_capacity != "N/A" and isinstance(typical_capacity, (int, float)):
+            history_parts.append(f"- Typical daily capacity: {typical_capacity:.0f} tasks")
+        
+        if completion_history.get("preferredStudyTimes"):
+            history_parts.append(f"- Preferred study times: {', '.join(completion_history.get('preferredStudyTimes', []))}")
+        
+        if history_parts:
+            history_section = "Task Completion History:\n" + "\n".join(history_parts)
+            if total_length + len(history_section) <= max_length:
+                sections.append(history_section)
+                total_length += len(history_section)
+    
+    # Section 3: Study Patterns and Context (from retrieved documents)
+    context_parts = []
+    for doc in context_docs:
+        text = doc.get('text', '').strip()
+        if not text:
+            continue
+        
+        # Check if adding this would exceed limit
+        if total_length + len(text) + 50 > max_length:  # +50 for formatting
+            # Try to summarize remaining context
+            remaining = max_length - total_length - 100
+            if remaining > 200:
+                context_parts.append(f"[Additional context: {len(context_docs) - len(context_parts)} more relevant documents]")
+            break
+        
+        # Add document with relevance indicator
+        similarity = doc.get('similarity', 0)
+        relevance = "High" if similarity > 0.8 else "Medium" if similarity > 0.65 else "Low"
+        context_parts.append(f"[{relevance} relevance] {text}")
+        total_length += len(text) + 50
+    
+    if context_parts:
+        context_section = "Study Patterns and Context:\n" + "\n\n".join(context_parts)
+        sections.append(context_section)
+    
+    # Join all sections
+    formatted_context = "\n\n".join(sections)
+    
+    # Final check: if still too long, summarize
+    if len(formatted_context) > max_length:
+        formatted_context = summarize_long_context(formatted_context, max_length)
+    
+    return formatted_context
+
+
 def filter_syllabus_by_chapters(
     user_id: str,
     course_id: str,

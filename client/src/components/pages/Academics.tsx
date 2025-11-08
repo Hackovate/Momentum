@@ -420,7 +420,7 @@ export function Academics() {
   const completedCourses = subjects.filter((s) => s.assignmentProgress?.isCompleted === true).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Modals */}
       <CourseModal
         open={courseModalOpen}
@@ -526,17 +526,17 @@ export function Academics() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-foreground text-2xl font-bold mb-1">Academic Tracker</h1>
-          <p className="text-muted-foreground text-sm">Track your classes, assignments, and performance</p>
+          <h1 className="text-foreground text-3xl md:text-4xl font-bold mb-2">Academic Tracker</h1>
+          <p className="text-muted-foreground text-base">Track your classes, assignments, and performance</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2 h-9">
+        <div className="flex gap-3">
+          <Button variant="outline" className="gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all">
             <Plus className="w-4 h-4" />
             Add Notes
           </Button>
-          <Button onClick={handleAddCourse} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 h-9">
+          <Button onClick={handleAddCourse} className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all">
             <Plus className="w-4 h-4" />
             {getAddButtonText()}
           </Button>
@@ -553,9 +553,9 @@ export function Academics() {
             return (
               <Card
                 key={subject.id}
-                className="basis-[240px] max-w-[260px] shrink-0 grow-0 border border-border/60 bg-card rounded-xl shadow-sm hover:shadow-md transition-shadow"
+                className="basis-[240px] max-w-[260px] shrink-0 grow-0 border border-border bg-card rounded-xl shadow-md hover:shadow-lg transition-all"
               >
-                <div className="p-4 flex flex-col gap-3">
+                <div className="p-5 flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="text-sm font-semibold text-foreground truncate">{subject.name}</h3>
@@ -826,7 +826,7 @@ export function Academics() {
       {/* Upcoming Exams & Performance */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {/* Upcoming Exams */}
-        <Card className="p-3 border-border bg-card">
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-orange-500" />
@@ -879,7 +879,7 @@ export function Academics() {
         </Card>
 
         {/* Summary */}
-        <Card className="p-3 border-border bg-card">
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-foreground font-semibold text-sm">Summary</h2>
             <div className="text-xs text-muted-foreground">Updated now</div>

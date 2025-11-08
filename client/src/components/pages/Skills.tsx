@@ -171,7 +171,16 @@ export function Skills() {
         estimatedHours: generatedRoadmap.estimatedHours,
         startDate: generatedRoadmap.startDate,
         endDate: generatedRoadmap.endDate,
-        milestones: generatedRoadmap.milestones.map((m: any) => ({ name: m.name, order: m.order })),
+        milestones: generatedRoadmap.milestones.map((m: any, index: number) => ({
+          name: m.name,
+          order: m.order !== undefined ? m.order : index,
+          startDate: m.startDate || null,
+          dueDate: m.dueDate || null,
+          estimatedHours: m.estimatedHours || null,
+          daysAllocated: m.daysAllocated || null,
+          status: m.status || 'pending',
+          completed: m.completed || false
+        })),
         learningResources: generatedRoadmap.resources.map((r: any) => ({
           title: r.title,
           type: r.type,
@@ -250,7 +259,7 @@ export function Skills() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-6">
       {/* Skill Modal */}
       <SkillModal
         open={skillModalOpen}
@@ -261,23 +270,23 @@ export function Skills() {
       />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-gray-900 dark:text-gray-100 text-2xl mb-0.5">Skill Development Tracker</h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm">Track your learning journey and build your expertise</p>
+          <h1 className="text-foreground text-3xl md:text-4xl font-bold mb-2">Skill Development Tracker</h1>
+          <p className="text-muted-foreground text-base">Track your learning journey and build your expertise</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Button 
             onClick={handleGenerateSkill}
             variant="outline"
-            className="gap-2 border-violet-500 text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950"
+            className="gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all"
           >
             <Sparkles className="w-4 h-4" />
             Generate Skill
           </Button>
           <Button 
             onClick={handleAddSkill}
-            className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white gap-2"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all"
           >
             <Plus className="w-4 h-4" />
             Add New Skill
@@ -287,7 +296,7 @@ export function Skills() {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-        <Card className="p-3 border-gray-200 dark:border-gray-700">
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 dark:text-gray-400 text-xs mb-0.5">Active Skills</p>
@@ -298,7 +307,7 @@ export function Skills() {
             </div>
           </div>
         </Card>
-        <Card className="p-3 border-gray-200 dark:border-gray-700">
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 dark:text-gray-400 text-xs mb-0.5">Milestones Completed</p>
@@ -309,7 +318,7 @@ export function Skills() {
             </div>
           </div>
         </Card>
-        <Card className="p-3 border-gray-200 dark:border-gray-700">
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-600 dark:text-gray-400 text-xs mb-0.5">Total Learning Hours</p>

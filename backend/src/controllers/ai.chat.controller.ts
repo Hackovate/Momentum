@@ -737,17 +737,42 @@ export const chat = async (req: Request, res: Response) => {
                 // Delete existing milestones and create new ones if provided
                 if (action.data.milestones && Array.isArray(action.data.milestones) && action.data.milestones.length > 0) {
                   await tx.milestone.deleteMany({ where: { skillId: existingSkill.id } });
-                  await tx.milestone.createMany({
-                    data: action.data.milestones.map((milestone: any, index: number) => ({
-                      skillId: existingSkill.id,
-                      userId,
-                      name: milestone.name,
-                      completed: milestone.completed || false,
-                      status: milestone.status || (milestone.completed ? 'completed' : 'pending'),
-                      dueDate: milestone.dueDate ? new Date(milestone.dueDate) : null,
-                      order: milestone.order !== undefined ? milestone.order : index
-                    }))
-                  });
+                  await Promise.all(
+                    action.data.milestones.map((milestone: any, index: number) => {
+                      // Auto-calculate daysAllocated from dates if not provided
+                      let calculatedDaysAllocated = milestone.daysAllocated;
+                      if ((!calculatedDaysAllocated || calculatedDaysAllocated === null || calculatedDaysAllocated === '') && 
+                          milestone.startDate && milestone.dueDate) {
+                        const start = new Date(milestone.startDate);
+                        const due = new Date(milestone.dueDate);
+                        if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                          const diffTime = due.getTime() - start.getTime();
+                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                          if (diffDays > 0) {
+                            calculatedDaysAllocated = diffDays;
+                          }
+                        }
+                      }
+                      
+                      return tx.milestone.create({
+                        data: {
+                          skillId: existingSkill.id,
+                          userId,
+                          name: milestone.name,
+                          completed: milestone.completed || false,
+                          status: milestone.status || (milestone.completed ? 'completed' : 'pending'),
+                          dueDate: milestone.dueDate ? new Date(milestone.dueDate) : null,
+                          startDate: milestone.startDate ? new Date(milestone.startDate) : null,
+                          order: milestone.order !== undefined ? milestone.order : index,
+                          estimatedHours: milestone.estimatedHours ? parseFloat(milestone.estimatedHours) : null,
+                          progressPercentage: milestone.progressPercentage !== undefined ? Math.max(0, Math.min(100, parseFloat(milestone.progressPercentage))) : null,
+                          actualHoursSpent: milestone.actualHoursSpent ? parseFloat(milestone.actualHoursSpent) : null,
+                          daysAllocated: calculatedDaysAllocated ? parseInt(calculatedDaysAllocated) : null,
+                          currentDay: milestone.currentDay ? parseInt(milestone.currentDay) : null
+                        }
+                      });
+                    })
+                  );
                 }
 
                 // Delete existing resources and create new ones if provided
@@ -806,17 +831,42 @@ export const chat = async (req: Request, res: Response) => {
 
               // Create milestones if provided (batch create for better performance)
               if (action.data.milestones && Array.isArray(action.data.milestones) && action.data.milestones.length > 0) {
-                await tx.milestone.createMany({
-                  data: action.data.milestones.map((milestone: any, index: number) => ({
-                    skillId: skill.id,
-                    userId,
-                    name: milestone.name,
-                    completed: milestone.completed || false,
-                    status: milestone.status || (milestone.completed ? 'completed' : 'pending'),
-                    dueDate: milestone.dueDate ? new Date(milestone.dueDate) : null,
-                    order: milestone.order !== undefined ? milestone.order : index
-                  }))
-                });
+                await Promise.all(
+                  action.data.milestones.map((milestone: any, index: number) => {
+                    // Auto-calculate daysAllocated from dates if not provided
+                    let calculatedDaysAllocated = milestone.daysAllocated;
+                    if ((!calculatedDaysAllocated || calculatedDaysAllocated === null || calculatedDaysAllocated === '') && 
+                        milestone.startDate && milestone.dueDate) {
+                      const start = new Date(milestone.startDate);
+                      const due = new Date(milestone.dueDate);
+                      if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                        const diffTime = due.getTime() - start.getTime();
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                        if (diffDays > 0) {
+                          calculatedDaysAllocated = diffDays;
+                        }
+                      }
+                    }
+                    
+                    return tx.milestone.create({
+                      data: {
+                        skillId: skill.id,
+                        userId,
+                        name: milestone.name,
+                        completed: milestone.completed || false,
+                        status: milestone.status || (milestone.completed ? 'completed' : 'pending'),
+                        dueDate: milestone.dueDate ? new Date(milestone.dueDate) : null,
+                        startDate: milestone.startDate ? new Date(milestone.startDate) : null,
+                        order: milestone.order !== undefined ? milestone.order : index,
+                        estimatedHours: milestone.estimatedHours ? parseFloat(milestone.estimatedHours) : null,
+                        progressPercentage: milestone.progressPercentage !== undefined ? Math.max(0, Math.min(100, parseFloat(milestone.progressPercentage))) : null,
+                        actualHoursSpent: milestone.actualHoursSpent ? parseFloat(milestone.actualHoursSpent) : null,
+                        daysAllocated: calculatedDaysAllocated ? parseInt(calculatedDaysAllocated) : null,
+                        currentDay: milestone.currentDay ? parseInt(milestone.currentDay) : null
+                      }
+                    });
+                  })
+                );
               }
 
               // Create learning resources if provided (batch create for better performance)

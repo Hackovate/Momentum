@@ -844,8 +844,23 @@ router.post('/ai-generate', async (req: AuthRequest, res) => {
     // Create milestones if provided
     if (milestones && Array.isArray(milestones)) {
       await Promise.all(
-        milestones.map((milestone: any, index: number) =>
-          prisma.milestone.create({
+        milestones.map((milestone: any, index: number) => {
+          // Auto-calculate daysAllocated from dates if not provided
+          let calculatedDaysAllocated = milestone.daysAllocated;
+          if ((!calculatedDaysAllocated || calculatedDaysAllocated === null || calculatedDaysAllocated === '') && 
+              milestone.startDate && milestone.dueDate) {
+            const start = new Date(milestone.startDate);
+            const due = new Date(milestone.dueDate);
+            if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+              const diffTime = due.getTime() - start.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+              if (diffDays > 0) {
+                calculatedDaysAllocated = diffDays;
+              }
+            }
+          }
+          
+          return prisma.milestone.create({
             data: {
               skillId: skill.id,
               userId: req.userId!,
@@ -853,10 +868,16 @@ router.post('/ai-generate', async (req: AuthRequest, res) => {
               completed: milestone.completed || false,
               status: milestone.status || (milestone.completed ? 'completed' : 'pending'),
               dueDate: milestone.dueDate ? new Date(milestone.dueDate) : null,
-              order: index
+              startDate: milestone.startDate ? new Date(milestone.startDate) : null,
+              order: milestone.order !== undefined ? milestone.order : index,
+              estimatedHours: milestone.estimatedHours ? parseFloat(milestone.estimatedHours) : null,
+              progressPercentage: milestone.progressPercentage !== undefined ? Math.max(0, Math.min(100, parseFloat(milestone.progressPercentage))) : null,
+              actualHoursSpent: milestone.actualHoursSpent ? parseFloat(milestone.actualHoursSpent) : null,
+              daysAllocated: calculatedDaysAllocated ? parseInt(calculatedDaysAllocated) : null,
+              currentDay: milestone.currentDay ? parseInt(milestone.currentDay) : null
             }
-          })
-        )
+          });
+        })
       );
     }
 

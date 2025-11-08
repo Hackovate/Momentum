@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Sparkles, CheckCircle2, Circle, Clock, Trash2, Pencil, RefreshCw, BookOpen, Target, ListTodo, Badge } from 'lucide-react';
+import { Plus, Sparkles, CheckCircle2, Circle, Clock, RefreshCw, BookOpen, Target, ListTodo } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
@@ -13,7 +13,15 @@ import { tasksAPI, coursesAPI, skillsAPI, planningAPI, learningAPI } from '../..
 import { toast } from 'sonner';
 
 export function DailyPlanner() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  // Always initialize with today's date (use local date, not UTC)
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
   const [isDayGenerated, setIsDayGenerated] = useState(false);
   const [dailyPlan, setDailyPlan] = useState<any>(null);
   const [allTasks, setAllTasks] = useState<any[]>([]);
@@ -37,10 +45,20 @@ export function DailyPlanner() {
   const [aiPrediction, setAiPrediction] = useState<any>(null);
   const [loadingPrediction, setLoadingPrediction] = useState(false);
 
-  // Check if day is already generated (from localStorage)
+  // Check if day is already generated (from localStorage) and ensure selectedDate is always today
   useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const storedPlan = localStorage.getItem(`dailyPlan_${today}`);
+    // Use local date, not UTC, to match user's timezone
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+    
+    // Always reset selectedDate to today when component mounts or refreshes
+    // This ensures the date picker always shows today, not a previously selected date
+    setSelectedDate(todayStr);
+    
+    const storedPlan = localStorage.getItem(`dailyPlan_${todayStr}`);
     if (storedPlan) {
       try {
         const plan = JSON.parse(storedPlan);
@@ -49,8 +67,12 @@ export function DailyPlanner() {
       } catch (e) {
         console.error('Error parsing stored plan:', e);
       }
+    } else {
+      // Clear any old plan if switching to a new day
+      setDailyPlan(null);
+      setIsDayGenerated(false);
     }
-  }, []);
+  }, []); // Empty dependency array - only run on mount
 
   // Fetch all tasks for the selected date
   useEffect(() => {
@@ -393,16 +415,24 @@ export function DailyPlanner() {
         console.error('Error loading classes:', error);
       }
 
-      // Prepare tasks for AI
+      // Prepare tasks for AI with all new fields
       const tasksForAI = allTasks.map(task => ({
         id: task.id,
         title: task.title,
         description: task.description,
         dueDate: task.dueDate,
+        startDate: task.startDate, // NEW
         priority: task.priority,
-        estimatedMinutes: task.estimatedMinutes || 60,
+        estimatedMinutes: task.estimatedMinutes || (task.estimatedHours ? task.estimatedHours * 60 : 60),
+        estimatedHours: task.estimatedHours, // NEW
         type: task.type,
-        source: task.source
+        source: task.source,
+        status: task.status, // NEW
+        progressPercentage: task.progressPercentage, // NEW
+        actualMinutesSpent: task.actualMinutesSpent || (task.actualHoursSpent ? task.actualHoursSpent * 60 : null), // NEW
+        daysAllocated: task.daysAllocated, // NEW
+        currentDay: task.currentDay, // NEW
+        sourceId: task.sourceId // NEW - for updating tasks later
       }));
 
       // Call AI planning service
@@ -422,7 +452,16 @@ export function DailyPlanner() {
         // Store in localStorage
         localStorage.setItem(`dailyPlan_${selectedDate}`, JSON.stringify(plan));
         
-        toast.success('Your day has been generated!');
+        // Show notification for shifted tasks
+        if (plan.shifted_tasks && plan.shifted_tasks.length > 0) {
+          const shiftedCount = plan.shifted_tasks.length;
+          const nextDate = new Date(selectedDate);
+          nextDate.setDate(nextDate.getDate() + 1);
+          toast.success(`${shiftedCount} task${shiftedCount > 1 ? 's' : ''} shifted to ${nextDate.toLocaleDateString()}`);
+        } else {
+          toast.success('Your day has been generated!');
+        }
+        
         await loadAllTasks(); // Reload to get updated tasks
       } else {
         throw new Error(planResponse.error || 'Failed to generate plan');
@@ -440,18 +479,63 @@ export function DailyPlanner() {
     try {
       setRebalancing(true);
       
-      // Get incomplete tasks
+      // Get incomplete tasks with all new fields
       const incompleteTasks = allTasks.filter(task => {
         const status = task.status?.toLowerCase() || 'pending';
         return status !== 'completed';
-      });
+      }).map(task => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        dueDate: task.dueDate,
+        startDate: task.startDate,
+        priority: task.priority,
+        estimatedMinutes: task.estimatedMinutes || (task.estimatedHours ? task.estimatedHours * 60 : 60),
+        estimatedHours: task.estimatedHours,
+        type: task.type,
+        source: task.source,
+        status: task.status,
+        progressPercentage: task.progressPercentage,
+        actualMinutesSpent: task.actualMinutesSpent || (task.actualHoursSpent ? task.actualHoursSpent * 60 : null),
+        daysAllocated: task.daysAllocated,
+        currentDay: task.currentDay,
+        sourceId: task.sourceId
+      }));
 
-      // Get completion history (simplified - can be enhanced)
-      const completionHistory = {
-        averageDailyCompletion: 0.7, // Placeholder - can calculate from historical data
+      // Fetch real completion history from UserTaskPattern
+      let completionHistory = {
+        averageDailyCompletion: 0.7,
         preferredStudyTimes: [],
-        typicalCapacity: incompleteTasks.length * 0.6 // Estimate
+        typicalCapacity: incompleteTasks.length * 0.6
       };
+
+      try {
+        const patterns = await learningAPI.getPatterns();
+        if (patterns && patterns.length > 0) {
+          // Calculate average completion rate
+          const completionRates = patterns
+            .filter((p: any) => p.completionRate !== null && p.completionRate !== undefined)
+            .map((p: any) => p.completionRate);
+          
+          if (completionRates.length > 0) {
+            const avgCompletionRate = completionRates.reduce((a: number, b: number) => a + b, 0) / completionRates.length;
+            completionHistory.averageDailyCompletion = avgCompletionRate;
+          }
+
+          // Calculate typical capacity based on actual vs estimated time
+          const timeRatios = patterns
+            .filter((p: any) => p.estimatedHours && p.actualHours)
+            .map((p: any) => p.actualHours / p.estimatedHours);
+          
+          if (timeRatios.length > 0) {
+            const avgTimeRatio = timeRatios.reduce((a: number, b: number) => a + b, 0) / timeRatios.length;
+            completionHistory.typicalCapacity = Math.round(incompleteTasks.length * avgTimeRatio);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching completion patterns:', error);
+        // Use defaults if fetch fails
+      }
 
       // Call rebalance API
       const rebalanceResponse = await planningAPI.rebalanceDailyPlan({
@@ -732,7 +816,7 @@ export function DailyPlanner() {
     try {
       await tasksAPI.delete(taskId);
       toast.success('Task deleted successfully!');
-      await loadTasks();
+      await loadAllTasks();
     } catch (error) {
       console.error('Error deleting task:', error);
       toast.error('Failed to delete task');
@@ -745,7 +829,10 @@ export function DailyPlanner() {
       title: task.title || '',
       description: task.description || '',
       dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-      priority: task.priority || 'medium',
+      priority: (task.priority || 'medium') as 'high' | 'medium' | 'low',
+      estimatedHours: '',
+      daysAllocated: '',
+      startDate: '',
     });
     setIsEditDialogOpen(true);
   };
@@ -766,11 +853,11 @@ export function DailyPlanner() {
         priority: newTask.priority,
       });
 
-      setNewTask({ title: '', description: '', dueDate: '', priority: 'medium' });
+      setNewTask({ title: '', description: '', dueDate: '', priority: 'medium', estimatedHours: '', daysAllocated: '', startDate: '' });
       setEditingTask(null);
       setIsEditDialogOpen(false);
       toast.success('Task updated successfully!');
-      await loadTasks();
+      await loadAllTasks();
     } catch (error) {
       console.error('Error updating task:', error);
       toast.error('Failed to update task');
@@ -788,8 +875,18 @@ export function DailyPlanner() {
     }
   };
 
+  // Filter tasks: if plan is generated, show only tasks in the schedule
+  const tasksToDisplay = isDayGenerated && dailyPlan?.schedule 
+    ? allTasks.filter((task: any) => {
+        // Check if task is in the plan schedule
+        return dailyPlan.schedule.some((scheduledItem: any) => 
+          scheduledItem.task_id === task.id || scheduledItem.task_id === task.sourceId
+        );
+      })
+    : allTasks; // Show all tasks if no plan generated
+
   // Sort tasks: in-progress first, then pending (by due date), then completed
-  const sortedTasks = [...allTasks].sort((a: any, b: any) => {
+  const sortedTasks = [...tasksToDisplay].sort((a: any, b: any) => {
     const statusA = a.status?.toLowerCase() || 'pending';
     const statusB = b.status?.toLowerCase() || 'pending';
     
@@ -814,8 +911,8 @@ export function DailyPlanner() {
     completed: sortedTasks.filter((t: any) => (t.status?.toLowerCase() || 'pending') === 'completed'),
   };
 
-  // Calculate completion stats
-  const totalTasks = allTasks.length;
+  // Calculate completion stats (based on displayed tasks)
+  const totalTasks = tasksToDisplay.length;
   const completedTasks = groupedTasks.completed.length;
   const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
@@ -1007,11 +1104,11 @@ export function DailyPlanner() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-foreground text-3xl mb-1">Daily Planner</h1>
+          <h1 className="text-foreground text-3xl md:text-4xl font-bold mb-2">Daily Planner</h1>
           <div className="flex items-center gap-4">
             <p className="text-muted-foreground">
               {new Date(selectedDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -1036,9 +1133,10 @@ export function DailyPlanner() {
           <Input
             type="date"
             value={selectedDate}
+            key={`date-picker-${selectedDate}`} // Force re-render when date changes
             onChange={(e) => {
-              setSelectedDate(e.target.value);
               const newDate = e.target.value;
+              setSelectedDate(newDate);
               const storedPlan = localStorage.getItem(`dailyPlan_${newDate}`);
               if (storedPlan) {
                 try {
@@ -1096,7 +1194,7 @@ export function DailyPlanner() {
             </Button>
           )}
           
-          <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+          <Dialog open={isAddDialogOpen} onOpenChange={(open: boolean) => {
             setIsAddDialogOpen(open);
             if (!open) {
               setNewTask({ 
@@ -1321,11 +1419,11 @@ export function DailyPlanner() {
           </Dialog>
 
           {/* Edit Task Dialog */}
-          <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
+          <Dialog open={isEditDialogOpen} onOpenChange={(open: boolean) => {
             setIsEditDialogOpen(open);
             if (!open) {
               setEditingTask(null);
-              setNewTask({ title: '', description: '', dueDate: '', priority: 'medium' });
+              setNewTask({ title: '', description: '', dueDate: '', priority: 'medium', estimatedHours: '', daysAllocated: '', startDate: '' });
             }
           }}>
             <DialogContent>
@@ -1379,7 +1477,7 @@ export function DailyPlanner() {
                 <Button variant="outline" onClick={() => {
                   setIsEditDialogOpen(false);
                   setEditingTask(null);
-                  setNewTask({ title: '', description: '', dueDate: '', priority: 'medium' });
+                  setNewTask({ title: '', description: '', dueDate: '', priority: 'medium', estimatedHours: '', daysAllocated: '', startDate: '' });
                 }}>Cancel</Button>
                 <Button onClick={handleUpdateTask}>Update Task</Button>
               </DialogFooter>

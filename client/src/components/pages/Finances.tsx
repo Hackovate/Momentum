@@ -362,25 +362,25 @@ export function Finances() {
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-foreground text-2xl mb-0.5">Expense & Savings Tracker</h1>
-          <p className="text-muted-foreground text-sm">Manage your finances and reach your savings goals</p>
+          <h1 className="text-foreground text-3xl md:text-4xl font-bold mb-2">Expense & Savings Tracker</h1>
+          <p className="text-muted-foreground text-base">Manage your finances and reach your savings goals</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => setIsSavingsGoalDialogOpen(true)}>
+        <div className="flex gap-3">
+          <Button variant="outline" className="gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all" onClick={() => setIsSavingsGoalDialogOpen(true)}>
             <TrendingUp className="w-4 h-4" />
             Add Savings Goal
           </Button>
           
-          <Button variant="outline" className="gap-2" onClick={() => setIsMonthlyBudgetDialogOpen(true)}>
+          <Button variant="outline" className="gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all" onClick={() => setIsMonthlyBudgetDialogOpen(true)}>
             <Wallet className="w-4 h-4" />
             Add Monthly Budget
           </Button>
           
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2" onClick={() => setIsAddDialogOpen(true)}>
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all" onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="w-4 h-4" />
             Add Transaction
           </Button>
@@ -744,69 +744,69 @@ export function Finances() {
       </Dialog>
 
       {/* Top Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-        <Card className="p-3 border-border bg-card h-fit">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-muted-foreground text-xs mb-0.5">Total Income</p>
-              <p className="text-foreground text-2xl">{totalIncome.toFixed(0)} BDT</p>
-              <p className="text-green-600 dark:text-green-400 text-sm mt-0.5">This month</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <p className="text-muted-foreground text-sm font-medium mb-1">Total Income</p>
+              <p className="text-foreground text-3xl font-bold mb-1">{totalIncome.toFixed(0)} BDT</p>
+              <p className="text-green-600 dark:text-green-400 text-sm">This month</p>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-white" />
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center ml-4 shadow-sm">
+              <TrendingUp className="w-6 h-6 text-white" />
             </div>
           </div>
         </Card>
 
-        <Card className="p-3 border-border bg-card h-fit">
-          <div className="flex items-center justify-between mb-2">
-            <div>
-              <p className="text-muted-foreground text-xs mb-0.5">Total Expenses</p>
-              <p className="text-foreground text-2xl">{totalExpenses.toFixed(0)} BDT</p>
-              <p className="text-muted-foreground text-xs mt-0.5">of {monthlyBudget} BDT budget</p>
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex-1">
+              <p className="text-muted-foreground text-sm font-medium mb-1">Total Expenses</p>
+              <p className="text-foreground text-3xl font-bold mb-1">{totalExpenses.toFixed(0)} BDT</p>
+              <p className="text-muted-foreground text-sm">of {monthlyBudget} BDT budget</p>
             </div>
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center">
-              <Wallet className="w-4 h-4 text-white" />
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center ml-4 shadow-sm">
+              <Wallet className="w-6 h-6 text-white" />
             </div>
           </div>
           <div>
-            <Progress value={budgetProgress} className="h-1.5" />
-            <p className={`text-xs mt-0.5 ${budgetProgress > 80 ? 'text-destructive' : 'text-muted-foreground'}`}>
+            <Progress value={budgetProgress} className="h-2 mb-1" />
+            <p className={`text-xs ${budgetProgress > 80 ? 'text-destructive' : 'text-muted-foreground'}`}>
               {budgetProgress > 100 ? 'Over budget!' : `${Math.round(budgetProgress)}% used`}
             </p>
           </div>
         </Card>
 
-        <Card className="p-3 border-border bg-card h-fit">
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-muted-foreground text-xs mb-0.5">Available Balance</p>
-              <p className="text-foreground text-2xl">{actualBalance.toFixed(0)} BDT</p>
-              <div className={`flex items-center gap-1 text-xs mt-0.5 ${
+            <div className="flex-1">
+              <p className="text-muted-foreground text-sm font-medium mb-1">Available Balance</p>
+              <p className="text-foreground text-3xl font-bold mb-1">{actualBalance.toFixed(0)} BDT</p>
+              <div className={`flex items-center gap-1 text-sm ${
                 actualBalance >= 0 
                   ? 'text-green-600 dark:text-green-400' 
                   : 'text-red-600 dark:text-red-400'
               }`}>
                 {actualBalance >= 0 ? (
                   <>
-                    <TrendingUp className="w-3 h-3" />
+                    <TrendingUp className="w-4 h-4" />
                     <span>Remaining</span>
                   </>
                 ) : (
                   <>
-                    <TrendingDown className="w-3 h-3" />
+                    <TrendingDown className="w-4 h-4" />
                     <span>Deficit</span>
                   </>
                 )}
               </div>
             </div>
-            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-white" />
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center ml-4 shadow-sm">
+              <TrendingUp className="w-6 h-6 text-white" />
             </div>
           </div>
         </Card>
 
-        <Card className="p-3 border-border bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 border-primary/20 h-fit">
+        <Card className="p-6 border-border bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 shadow-md hover:shadow-lg transition-shadow">
           <div 
             className="flex items-center justify-between cursor-pointer select-none"
             onClick={() => setIsGoalsExpanded(!isGoalsExpanded)}
@@ -902,30 +902,30 @@ export function Finances() {
       </div>
 
       {/* Category Breakdown & Recent Transactions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Spending by Category */}
-        <Card className="p-3 border-border bg-card">
-          <h2 className="text-foreground mb-2 text-lg">Monthly Spending by Category</h2>
-          <div className="space-y-2">
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
+          <h2 className="text-foreground mb-4 text-xl font-semibold">Monthly Spending by Category</h2>
+          <div className="space-y-4">
             {categoryBreakdownData.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">No expenses this month</p>
             ) : (
               categoryBreakdownData.map((item, index) => {
                 const Icon = item.icon;
                 return (
-                  <div key={index}>
-                    <div className="flex items-center justify-between text-sm mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center`}>
-                          <Icon className="w-3 h-3 text-white" />
+                  <div key={index} className="p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center shadow-sm`}>
+                          <Icon className="w-5 h-5 text-white" />
                         </div>
-                        <span className="text-foreground">{item.category}</span>
+                        <span className="text-foreground font-medium">{item.category}</span>
                       </div>
-                      <span className="text-foreground">${item.amount} ({item.percentage}%)</span>
+                      <span className="text-foreground font-semibold">{item.amount} BDT ({item.percentage}%)</span>
                     </div>
-                    <div className="w-full bg-muted rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-2.5">
                       <div
-                        className="bg-primary h-2 rounded-full transition-all"
+                        className="bg-primary h-2.5 rounded-full transition-all shadow-sm"
                         style={{ width: `${item.percentage}%` }}
                       ></div>
                     </div>
@@ -937,11 +937,11 @@ export function Finances() {
         </Card>
 
         {/* Recent Transactions */}
-        <Card className="p-3 border-border bg-card">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-foreground text-lg">Recent Transactions</h2>
+        <Card className="p-6 border-border bg-card shadow-md hover:shadow-lg transition-shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-foreground text-xl font-semibold">Recent Transactions</h2>
           </div>
-          <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
+          <div className="space-y-2 max-h-[400px] overflow-y-auto">
             {expenses.length === 0 ? (
               <p className="text-muted-foreground text-center py-4">No transactions yet</p>
             ) : (
@@ -951,21 +951,21 @@ export function Finances() {
                 const color = category?.color || 'from-gray-500 to-slate-500';
                 
                 return (
-                  <div key={transaction.id} className="flex items-center justify-between p-2.5 bg-muted rounded-lg hover:bg-accent transition-colors group">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
-                        <Icon className="w-4 h-4 text-white" />
+                  <div key={transaction.id} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-all group border border-border/50">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center shadow-sm`}>
+                        <Icon className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <p className="text-foreground">{transaction.description}</p>
+                        <p className="text-foreground font-medium">{transaction.description}</p>
                         <p className="text-muted-foreground text-sm">
                           {new Date(transaction.date).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <div className="flex flex-col items-end">
-                        <p className={`${
+                        <p className={`font-semibold ${
                           transaction.type === 'income' 
                             ? 'text-green-600 dark:text-green-400' 
                             : transaction.type === 'savings'
@@ -984,7 +984,7 @@ export function Finances() {
                         className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
                         onClick={() => handleDeleteExpense(transaction)}
                       >
-                        <Trash2 className="w-3 h-3 text-destructive" />
+                        <Trash2 className="w-4 h-4 text-destructive" />
                       </Button>
                     </div>
                   </div>

@@ -36,10 +36,10 @@ export function TopNavbar({ onNavigateToAssistant }: TopNavbarProps) {
   };
 
   return (
-    <div className="h-16 bg-card border-b border-border flex items-center justify-between px-6 sticky top-0 z-10">
+    <div className="h-16 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
       {/* Date Display */}
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground">{today}</span>
+        <span className="text-sm font-medium text-foreground">{today}</span>
       </div>
 
       {/* Search Bar */}
@@ -49,7 +49,7 @@ export function TopNavbar({ onNavigateToAssistant }: TopNavbarProps) {
           <input
             type="text"
             placeholder="Quick search..."
-            className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-foreground placeholder:text-muted-foreground"
+            className="w-full pl-10 pr-4 py-2.5 bg-muted/50 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 text-foreground placeholder:text-muted-foreground transition-all"
           />
         </div>
       </div>
@@ -58,7 +58,7 @@ export function TopNavbar({ onNavigateToAssistant }: TopNavbarProps) {
       <div className="flex items-center gap-3">
         {/* AI Assistant Button */}
         <Button 
-          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2 shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all"
           onClick={onNavigateToAssistant}
         >
           <Sparkles className="w-4 h-4" />
@@ -70,24 +70,24 @@ export function TopNavbar({ onNavigateToAssistant }: TopNavbarProps) {
 
         {/* Notifications */}
         <button 
-          className="relative p-2 hover:bg-muted rounded-lg transition-colors"
+          className="relative p-2.5 hover:bg-muted rounded-lg transition-all hover:scale-105"
           aria-label="View notifications"
           title="Notifications"
         >
           <Bell className="w-5 h-5 text-foreground" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full"></span>
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-destructive rounded-full ring-2 ring-card"></span>
         </button>
 
         {/* Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button 
-              className="flex items-center gap-2 hover:bg-muted rounded-lg p-2 transition-colors"
+              className="flex items-center gap-2 hover:bg-muted rounded-lg p-1.5 transition-all hover:scale-105"
               aria-label="User profile menu"
               title="Profile"
             >
-              <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-primary text-primary-foreground">
+              <Avatar className="w-9 h-9 ring-2 ring-primary/20 hover:ring-primary/40 transition-all">
+                <AvatarFallback className="bg-primary text-primary-foreground font-semibold">
                   {getUserInitials()}
                 </AvatarFallback>
               </Avatar>

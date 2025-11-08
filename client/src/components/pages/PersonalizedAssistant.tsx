@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, Sparkles, X, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { Send, Sparkles, X, Loader2, Trash2, AlertTriangle } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -61,28 +61,28 @@ function MessageBubble({ msg }: { msg: Message }) {
       <div className={`max-w-[85%] sm:max-w-[75%] ${msg.type === 'user' ? 'flex flex-col items-end' : ''}`}>
         {msg.type === 'ai' && (
           <div className="flex items-center gap-2 mb-1.5">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-xs font-medium text-violet-700 dark:text-violet-300">AI Assistant</span>
+            <span className="text-xs font-medium text-foreground">AI Assistant</span>
           </div>
         )}
         <div
           className={`rounded-lg px-4 py-3 transition-all ${
             msg.type === 'user'
-              ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-br-md shadow-sm'
-              : 'bg-white border border-violet-200 text-gray-900 rounded-bl-md hover:shadow-md'
+              ? 'bg-primary text-primary-foreground rounded-br-md shadow-md'
+              : 'bg-card border border-border text-foreground rounded-bl-md shadow-sm hover:shadow-md'
           }`}
         >
           <div className="prose prose-sm max-w-none">
-            <p className={`text-sm leading-relaxed ${msg.type === 'user' ? 'text-white' : 'text-gray-800'} whitespace-pre-wrap break-words`}>
+            <p className={`text-sm leading-relaxed ${msg.type === 'user' ? 'text-primary-foreground' : 'text-foreground'} whitespace-pre-wrap break-words`}>
               {parseMarkdown(displayContent)}
             </p>
             {isLongMessage && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className={`mt-2 text-xs font-medium underline hover:no-underline transition-all ${
-                  msg.type === 'user' ? 'text-violet-100 hover:text-white' : 'text-violet-600 hover:text-violet-700'
+                  msg.type === 'user' ? 'text-primary-foreground/80 hover:text-primary-foreground' : 'text-primary hover:text-primary/80'
                 }`}
               >
                 {isExpanded ? 'Show less' : 'Show more'}
@@ -90,7 +90,7 @@ function MessageBubble({ msg }: { msg: Message }) {
             )}
           </div>
         </div>
-        <span className={`text-xs text-gray-500 mt-1.5 ${msg.type === 'user' ? 'text-right' : 'text-left'}`}>
+        <span className={`text-xs text-muted-foreground mt-1.5 ${msg.type === 'user' ? 'text-right' : 'text-left'}`}>
           {msg.timestamp}
         </span>
       </div>
@@ -377,23 +377,23 @@ export function PersonalizedAssistant() {
 
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-violet-200">
+      <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
-              <Sparkles className="w-5 h-5 text-white" />
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md">
+              <Sparkles className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-gray-900 text-2xl font-semibold">AI Assistant</h1>
+            <h1 className="text-foreground text-3xl md:text-4xl font-bold">AI Assistant</h1>
           </div>
-          <p className="text-gray-600 text-sm ml-12">Intelligent support for managing your academic and personal tasks</p>
+          <p className="text-muted-foreground text-base ml-0">Intelligent support for managing your academic and personal tasks</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
             onClick={() => setContextWindowOpen(true)}
-            className="gap-2 border-violet-300 hover:bg-violet-50 hover:border-violet-400 hover:text-violet-700"
+            className="gap-2 hover:bg-primary/5 hover:border-primary/50 transition-all"
             title="View/Edit AI Context"
           >
             <Settings className="w-4 h-4" />
@@ -402,7 +402,7 @@ export function PersonalizedAssistant() {
           <Button
             variant="outline"
             onClick={handleClearChat}
-            className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 border-violet-300"
+            className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10 transition-all"
             title="Clear Chat History"
           >
             <Trash2 className="w-4 h-4" />
@@ -412,9 +412,9 @@ export function PersonalizedAssistant() {
       </div>
 
       {/* Main Chat Interface */}
-      <div className="mt-4">
+      <div>
         {/* Chat Area */}
-        <Card className="p-0 border border-violet-200 shadow-sm flex flex-col" style={{ height: '600px' }}>
+        <Card className="p-0 border border-border shadow-md flex flex-col" style={{ height: '600px' }}>
           {/* Messages */}
           <div className="flex-1 overflow-hidden">
             <ScrollArea className="h-full">
@@ -426,15 +426,15 @@ export function PersonalizedAssistant() {
                   <div className="flex justify-start">
                     <div className="max-w-[85%] sm:max-w-[75%]">
                       <div className="flex items-center gap-2 mb-1.5">
-                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-sm">
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
                           <Sparkles className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className="text-xs font-medium text-violet-700 dark:text-violet-300">AI Assistant</span>
+                        <span className="text-xs font-medium text-foreground">AI Assistant</span>
                       </div>
-                      <div className="rounded-lg rounded-bl-md px-4 py-3 bg-white border border-violet-200">
+                      <div className="rounded-lg rounded-bl-md px-4 py-3 bg-card border border-border shadow-sm">
                         <div className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin text-violet-600" />
-                          <span className="text-sm text-gray-700">Processing...</span>
+                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                          <span className="text-sm text-foreground">Processing...</span>
                         </div>
                       </div>
                     </div>
@@ -446,21 +446,14 @@ export function PersonalizedAssistant() {
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950">
-            <div className="flex items-end gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="flex-shrink-0 h-10 w-10 border-violet-300 hover:bg-violet-100 hover:border-violet-400 hover:text-violet-700 transition-colors"
-              >
-                <Paperclip className="w-4 h-4" />
-              </Button>
+          <div className="p-4 border-t border-border bg-muted/30">
+            <div className="flex items-end gap-3">
               <div className="flex-1">
                 <Textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Type your message here..."
-                  className="resize-none min-h-[70px] max-h-[120px] border-violet-300 focus:border-violet-500 focus:ring-violet-500 bg-white rounded-lg"
+                  className="resize-none min-h-[70px] max-h-[120px] border-border focus:border-primary focus:ring-primary/20 bg-background rounded-lg"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -469,14 +462,14 @@ export function PersonalizedAssistant() {
                   }}
                   disabled={loading}
                 />
-                <p className="text-xs text-gray-500 mt-1.5 ml-1">
+                <p className="text-xs text-muted-foreground mt-1.5 ml-1">
                   Press Enter to send, Shift + Enter for new line
                 </p>
               </div>
               <Button
                 onClick={handleSendMessage}
                 disabled={loading || !message.trim()}
-                className="flex-shrink-0 h-10 px-6 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all rounded-lg shadow-sm"
+                className="flex-shrink-0 h-10 px-6 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 disabled:cursor-not-allowed transition-all rounded-lg shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30"
               >
                 {loading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
