@@ -1,4 +1,12 @@
 # ai_service.py - Main FastAPI application
+import os
+# Disable telemetry before any imports
+# LangSmith telemetry
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_ENDPOINT"] = ""
+# ChromaDB telemetry (PostHog)
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from config import PORT, GEMINI_MODEL

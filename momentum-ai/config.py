@@ -2,6 +2,13 @@
 import os
 from dotenv import load_dotenv
 
+# Disable LangSmith telemetry to prevent "Failed to send telemetry event" errors
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_ENDPOINT"] = ""
+
+# Disable ChromaDB telemetry (PostHog) to prevent telemetry errors
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
 load_dotenv()
 
 # Environment Variables

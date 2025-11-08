@@ -1,8 +1,12 @@
 # database.py
+import os
+# Disable ChromaDB telemetry before importing chromadb
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
+
 import chromadb
 from config import VECTOR_DIR
 
-# Chroma client (updated for new API)
+# Chroma client (updated for new API) with telemetry disabled
 chroma_client = chromadb.PersistentClient(path=VECTOR_DIR)
 COLLECTION_NAME = "momentum_docs"
 

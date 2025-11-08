@@ -85,7 +85,16 @@ CURRENT DATE: Today is {current_date_readable} ({current_day}). The date in YYYY
 RULES:
 - Keep responses SHORT (2-3 sentences max unless complex question)
 - For skill creation: Extract info from user message, generate milestones/resources quickly
-- Always end with "Actions:" JSON array when creating/updating data
+- When creating/updating data: Provide a friendly response, then add "Actions:" followed by JSON array on a new line
+- IMPORTANT: Do NOT include the Actions JSON in your response text - only show it after "Actions:" on a separate line
+- The Actions section should be separate from your conversational response
+
+EXAMPLE FORMAT:
+User: "I want to learn CSS, 3 hours per week for 1 month starting Nov 13"
+Assistant: Great! I'll set up your CSS learning plan for you. You'll be dedicating 3 hours per week for 1 month, starting November 13, 2025.
+
+Actions:
+[{{"type":"add_skill","data":{{"name":"CSS",...}}}}]
 
 ACTIONS (include in Actions: JSON array):
 - update_user: {{"type":"update_user","data":{{"firstName":"..."}}}}
@@ -208,74 +217,100 @@ Assistant:"""
         response_text = raw_response
         actions = []
         
-        # Try to extract actions from response (handle multi-line JSON with nested brackets)
-        # Look for "Actions:" followed by JSON array (handle nested brackets properly)
-        actions_match = None
-        
-        # Pattern 1: Actions: followed by JSON array (may be in code block)
-        actions_match = re.search(r'Actions:.*?```json\s*(\[.*?\])\s*```', raw_response, re.DOTALL | re.IGNORECASE)
-        if not actions_match:
-            # Pattern 2: Actions: followed by JSON array (no code block)
-            actions_match = re.search(r'Actions:\s*(\[.*?\])', raw_response, re.DOTALL)
-        if not actions_match:
-            # Pattern 3: Look for JSON array anywhere after "Actions:"
-            # Use balanced bracket matching
-            actions_pos = raw_response.find('Actions:')
-            if actions_pos != -1:
-                # Find the opening bracket after "Actions:"
-                bracket_pos = raw_response.find('[', actions_pos)
-                if bracket_pos != -1:
-                    # Count brackets to find the matching closing bracket
-                    bracket_count = 0
-                    end_pos = bracket_pos
-                    for i in range(bracket_pos, len(raw_response)):
-                        if raw_response[i] == '[':
+        # Improved JSON extraction using balanced bracket matching
+        # This handles nested JSON structures properly
+        actions_pos = raw_response.find('Actions:')
+        if actions_pos != -1:
+            # Find the opening bracket after "Actions:"
+            # Skip past any code block markers
+            search_start = actions_pos + len('Actions:')
+            bracket_pos = raw_response.find('[', search_start)
+            
+            if bracket_pos != -1:
+                # Use balanced bracket matching to find the complete JSON array
+                # This handles nested arrays and objects correctly
+                bracket_count = 0
+                brace_count = 0  # Also track braces for nested objects
+                in_string = False
+                escape_next = False
+                end_pos = bracket_pos
+                
+                for i in range(bracket_pos, len(raw_response)):
+                    char = raw_response[i]
+                    
+                    if escape_next:
+                        escape_next = False
+                        continue
+                    
+                    if char == '\\':
+                        escape_next = True
+                        continue
+                    
+                    if char == '"' and not escape_next:
+                        in_string = not in_string
+                        continue
+                    
+                    if not in_string:
+                        if char == '[':
                             bracket_count += 1
-                        elif raw_response[i] == ']':
+                        elif char == ']':
                             bracket_count -= 1
                             if bracket_count == 0:
                                 end_pos = i + 1
                                 break
-                    if bracket_count == 0:
-                        actions_str = raw_response[bracket_pos:end_pos]
-                        # Clean up and parse directly
-                        actions_str = re.sub(r'^```json\s*', '', actions_str, flags=re.IGNORECASE)
-                        actions_str = re.sub(r'^```\s*', '', actions_str)
-                        actions_str = re.sub(r'\s*```$', '', actions_str)
-                        actions_str = actions_str.strip()
-                        try:
-                            actions_json = json.loads(actions_str)
-                            actions = [ChatAction(**action) for action in actions_json]
-                            response_text = re.sub(r'\nActions:.*$', '', response_text, flags=re.DOTALL).strip()
-                            print(f"Successfully extracted {len(actions)} actions from AI response (bracket matching)")
-                        except Exception as e:
-                            print(f"Error parsing actions from bracket match: {e}")
-                            actions_match = None  # Fall through to try other patterns
-        
-        if actions_match:
-            try:
-                # Extract the JSON string from the regex match
-                actions_str = actions_match.group(1).strip()
-                # Clean up the JSON string (remove markdown code blocks if present)
-                actions_str = re.sub(r'^```json\s*', '', actions_str, flags=re.IGNORECASE)
-                actions_str = re.sub(r'^```\s*', '', actions_str)
-                actions_str = re.sub(r'\s*```$', '', actions_str)
-                actions_str = actions_str.strip()
+                        elif char == '{':
+                            brace_count += 1
+                        elif char == '}':
+                            brace_count -= 1
                 
-                actions_json = json.loads(actions_str)
-                actions = [ChatAction(**action) for action in actions_json]
-                # Remove actions section from response text
-                response_text = re.sub(r'\nActions:.*$', '', response_text, flags=re.DOTALL).strip()
-                print(f"Successfully extracted {len(actions)} actions from AI response")
-            except Exception as e:
-                print(f"Error parsing actions: {e}")
-                try:
-                    match_str = actions_match.group(1)
-                    print(f"Actions string (first 500 chars): {match_str[:500] if len(match_str) > 500 else match_str}")
-                except:
-                    pass
-                # traceback is already imported at top of file
-                traceback.print_exc()
+                if bracket_count == 0:
+                    # Extract the JSON string
+                    actions_str = raw_response[bracket_pos:end_pos]
+                    
+                    # Clean up markdown code blocks if present
+                    actions_str = re.sub(r'^```json\s*', '', actions_str, flags=re.IGNORECASE | re.MULTILINE)
+                    actions_str = re.sub(r'^```\s*', '', actions_str, flags=re.MULTILINE)
+                    actions_str = re.sub(r'\s*```$', '', actions_str, flags=re.MULTILINE)
+                    actions_str = actions_str.strip()
+                    
+                    # Try to parse the JSON
+                    try:
+                        actions_json = json.loads(actions_str)
+                        if isinstance(actions_json, list):
+                            actions = [ChatAction(**action) for action in actions_json]
+                            # Remove the entire Actions section from response text
+                            # Remove from "Actions:" to the end of the JSON array
+                            response_text = raw_response[:actions_pos].strip()
+                            # Also remove any trailing newlines or markdown
+                            response_text = re.sub(r'\n+$', '', response_text)
+                            print(f"Successfully extracted {len(actions)} actions from AI response")
+                        else:
+                            print(f"Warning: Actions JSON is not a list: {type(actions_json)}")
+                    except json.JSONDecodeError as e:
+                        print(f"Error parsing actions JSON: {e}")
+                        print(f"Actions string (first 1000 chars): {actions_str[:1000] if len(actions_str) > 1000 else actions_str}")
+                        # Try to fix common JSON issues
+                        try:
+                            # Try to complete truncated JSON by adding closing brackets
+                            fixed_str = actions_str
+                            if bracket_count > 0:
+                                fixed_str += ']' * bracket_count
+                            if brace_count > 0:
+                                fixed_str += '}' * brace_count
+                            actions_json = json.loads(fixed_str)
+                            if isinstance(actions_json, list):
+                                actions = [ChatAction(**action) for action in actions_json]
+                                response_text = raw_response[:actions_pos].strip()
+                                response_text = re.sub(r'\n+$', '', response_text)
+                                print(f"Successfully extracted {len(actions)} actions after fixing truncated JSON")
+                        except Exception as e2:
+                            print(f"Failed to fix truncated JSON: {e2}")
+                            traceback.print_exc()
+                    except Exception as e:
+                        print(f"Error processing actions: {e}")
+                        traceback.print_exc()
+                else:
+                    print(f"Warning: Unbalanced brackets in Actions JSON (bracket_count={bracket_count})")
         
         # Also check if user message mentions updates and try to extract them (fallback if AI doesn't return actions)
         update_keywords = ["change", "update", "set", "modify", "edit", "my name is", "call me"]
