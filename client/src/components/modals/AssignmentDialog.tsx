@@ -107,10 +107,18 @@ export function AssignmentDialog({
     }
   };
 
+  // Helper function to get next status in cycle: pending → in-progress → completed → pending
+  const getNextStatus = (current: string): string => {
+    const normalized = current?.toLowerCase() || 'pending';
+    if (normalized === 'pending') return 'in-progress';
+    if (normalized === 'in-progress') return 'completed';
+    return 'pending'; // completed → pending
+  };
+
   const handleToggleComplete = async (assignment: any) => {
-    // Toggle between completed and pending
+    // Cycle through 3 states: pending → in-progress → completed → pending
     const currentStatus = assignment.status?.toLowerCase() || 'pending';
-    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    const newStatus = getNextStatus(currentStatus);
     
     // Optimistically update local state for immediate UI feedback
     setLocalAssignments(prev => 
@@ -297,6 +305,49 @@ export function AssignmentDialog({
                 );
               }
               
+              // Sort assignments: in-progress at top, pending with near due dates next, completed at bottom
+              filteredAssignments = [...filteredAssignments].sort((a: any, b: any) => {
+                const statusA = a.status?.toLowerCase() || 'pending';
+                const statusB = b.status?.toLowerCase() || 'pending';
+                
+                // Helper to check if due date is near (within 7 days)
+                const isDueDateNear = (dueDate: string | null | undefined): boolean => {
+                  if (!dueDate) return false;
+                  const due = new Date(dueDate);
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const diffTime = due.getTime() - today.getTime();
+                  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  return diffDays >= 0 && diffDays <= 7;
+                };
+                
+                // Priority order: in-progress > pending (with near due) > pending (other) > completed
+                const getPriority = (assignment: any): number => {
+                  const status = assignment.status?.toLowerCase() || 'pending';
+                  if (status === 'in-progress') return 1;
+                  if (status === 'pending' && isDueDateNear(assignment.dueDate)) return 2;
+                  if (status === 'pending') return 3;
+                  return 4; // completed
+                };
+                
+                const priorityA = getPriority(a);
+                const priorityB = getPriority(b);
+                
+                if (priorityA !== priorityB) {
+                  return priorityA - priorityB;
+                }
+                
+                // If same priority, sort by due date (earlier first) for pending items
+                if (priorityA === 2 || priorityA === 3) {
+                  const dueA = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+                  const dueB = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+                  return dueA - dueB;
+                }
+                
+                // For completed items, maintain original order
+                return 0;
+              });
+              
               return filteredAssignments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <p className="text-muted-foreground text-sm">
@@ -323,18 +374,29 @@ export function AssignmentDialog({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-2 flex-1 min-w-0">
-                        {/* Checkbox for completion */}
+                        {/* Checkbox for completion - 3 states: pending (gray), in-progress (yellow), completed (green) */}
                         <button
                           type="button"
                           onClick={() => handleToggleComplete(assignment)}
                           className="mt-0.5 flex-shrink-0"
-                          aria-label={assignment.status?.toLowerCase() === 'completed' ? 'Mark as incomplete' : 'Mark as complete'}
+                          aria-label={
+                            assignment.status?.toLowerCase() === 'completed' 
+                              ? 'Mark as pending' 
+                              : assignment.status?.toLowerCase() === 'in-progress'
+                              ? 'Mark as completed'
+                              : 'Mark as in progress'
+                          }
                         >
-                          {(assignment.status?.toLowerCase() === 'completed') ? (
-                            <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
-                          ) : (
-                            <Circle className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
-                          )}
+                          {(() => {
+                            const status = assignment.status?.toLowerCase() || 'pending';
+                            if (status === 'completed') {
+                              return <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />;
+                            } else if (status === 'in-progress') {
+                              return <Circle className="w-5 h-5 text-yellow-500 dark:text-yellow-400" />;
+                            } else {
+                              return <Circle className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />;
+                            }
+                          })()}
                         </button>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">

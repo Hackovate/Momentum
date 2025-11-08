@@ -13,19 +13,19 @@ model User {
   password  String
   firstName String?
   lastName  String?
-
+  
   // Education level information (Bangladeshi context)
   educationLevel      String? // "school", "college", "university", "graduate"
   institution         String? // Name of school/college/university
   class               String? // For school: "6", "7", "8", "9", "10", "11", "12"
   group               String? // For school (9-12): "science", "commerce", "arts"
-  // For college: "science", "commerce", "arts"
+                                       // For college: "science", "commerce", "arts"
   year                Int? // For college: 1, 2 | For university: 1, 2, 3, 4
   major               String? // For university: field of study
   board               String? // For school/college: "Dhaka", "Chittagong", "Rajshahi", etc.
   expectedGraduation  DateTime? // Expected graduation date
   unstructuredContext String?   @db.Text // User-editable unstructured context for AI
-
+  
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   academics         Academic[]
@@ -149,7 +149,7 @@ model Finance {
   amount      Float
   description String?
   date        DateTime @default(now())
-
+  
   // Enhanced fields for AI-ready finance tracking
   type          String  @default("expense") // income or expense
   paymentMethod String? // cash, card, digital, bank_transfer, etc.
@@ -157,7 +157,7 @@ model Finance {
   frequency     String? // weekly, monthly, yearly, quarterly
   aiGenerated   Boolean @default(false) // for AI-suggested transactions
   goalId        String? // link to savings goal
-
+  
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -270,7 +270,7 @@ model Skill {
   timeSpent      String? @default("0h") // Total learning hours
   resourceCount  Int     @default(0) // Number of resources
   certificateUrl String? // URL/path to certificate file
-
+  
   // Enhanced fields for manual creation and AI generation
   durationMonths Int? // Target duration in months
   estimatedHours Float? // Total estimated learning hours
@@ -278,7 +278,7 @@ model Skill {
   endDate        DateTime? // Optional end date
   goalStatement  String? // Short goal/summary statement
   aiGenerated    Boolean   @default(false) // Whether created by AI
-
+  
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)

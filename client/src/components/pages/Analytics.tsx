@@ -321,7 +321,7 @@ export function Analytics() {
                       </div>
                     </div>
                   )}
-
+                  
                   {/* Enhanced Tooltip with Task Details */}
                   {dayData.tasksTotal > 0 && (
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-30 pointer-events-none min-w-[240px]">
@@ -393,23 +393,23 @@ export function Analytics() {
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-br from-red-400 to-red-500" />
                 <span className="text-muted-foreground font-medium">&lt;25%</span>
-              </div>
+            </div>
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-br from-orange-400 to-orange-500" />
                 <span className="text-muted-foreground font-medium">25-50%</span>
-              </div>
+            </div>
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-500" />
                 <span className="text-muted-foreground font-medium">50-75%</span>
-              </div>
+            </div>
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-br from-blue-400 to-blue-500" />
                 <span className="text-muted-foreground font-medium">75-99%</span>
-              </div>
+            </div>
               <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50">
                 <div className="w-2 h-2 rounded-full bg-gradient-to-br from-green-400 to-green-500" />
                 <span className="text-muted-foreground font-medium">100%</span>
-              </div>
+            </div>
             </div>
           </div>
         </Card>
