@@ -187,6 +187,15 @@ export const coursesAPI = {
     apiRequest<{ message: string; course: any }>(`/academics/${courseId}/syllabus`, { 
       method: 'DELETE' 
     }),
+      generateSyllabusTasks: async (courseId: string, months: number) => 
+        apiRequest<{ message: string; assignments: any[] }>(`/academics/${courseId}/syllabus/generate`, { 
+          method: 'POST', 
+          body: JSON.stringify({ months }) 
+        }),
+      verifySyllabus: async (courseId: string) => 
+        apiRequest<{ found: boolean; chunk_count: number; sample_chunks: string[]; message: string }>(`/academics/${courseId}/syllabus/verify`, { 
+          method: 'GET' 
+        }),
 };
 
 // Attendance API

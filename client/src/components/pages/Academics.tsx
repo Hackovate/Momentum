@@ -105,6 +105,7 @@ export function Academics() {
           description: c.description || '',
           progress: c.progress ?? 0,
           grade: c.grade ?? '',
+          syllabus: c.syllabus || null, // Include syllabus field
           color: ['from-blue-500 to-cyan-500','from-violet-500 to-purple-500','from-green-500 to-emerald-500','from-orange-500 to-red-500'][idx % 4],
           nextClass: c.classSchedule && c.classSchedule.length > 0 ? `${c.classSchedule[0].day} ${c.classSchedule[0].time}` : 'TBD',
           assignments: c.assignments ? c.assignments.length : 0,
@@ -322,6 +323,21 @@ export function Academics() {
     }
   };
 
+  const handleGenerateSyllabusTasks = async (months: number) => {
+    if (!selectedCourse) return;
+    setSyllabusLoading(true);
+    try {
+      const result = await coursesAPI.generateSyllabusTasks(selectedCourse.id, months);
+      alert(result.message || `Generated ${result.assignments?.length || 0} tasks successfully!`);
+      await loadData(); // Reload to show new tasks
+    } catch (err) {
+      console.error('Generate syllabus tasks failed', err);
+      alert('Failed to generate study plan');
+    } finally {
+      setSyllabusLoading(false);
+    }
+  };
+
   // Schedule Handlers
   const handleAddSchedule = (courseId: string) => {
     setModalMode('create');
@@ -446,8 +462,10 @@ export function Academics() {
           }}
           onSave={handleSaveSyllabus}
           onDelete={handleDeleteSyllabus}
+          onGenerate={handleGenerateSyllabusTasks}
           courseName={selectedCourse.name || selectedCourse.courseName}
           existingSyllabus={selectedCourse.syllabus}
+          courseId={selectedCourse.id}
           loading={syllabusLoading}
         />
       )}

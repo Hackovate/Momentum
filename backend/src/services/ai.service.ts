@@ -179,4 +179,66 @@ export async function deleteSyllabusFromChromaDB(userId: string, courseId: strin
   }
 }
 
+// Generate syllabus-based tasks
+export interface SyllabusTask {
+  title: string;
+  description?: string;
+  startDate?: string;
+  dueDate?: string;
+  estimatedHours?: number;
+}
+
+export interface GenerateSyllabusTasksRequest {
+  user_id: string;
+  course_id: string;
+  syllabus_text: string;
+  months: number;
+}
+
+export interface GenerateSyllabusTasksResponse {
+  tasks: SyllabusTask[];
+}
+
+export async function generateSyllabusTasks(
+  userId: string, 
+  courseId: string, 
+  syllabusText: string, 
+  months: number
+): Promise<SyllabusTask[]> {
+  try {
+    const { data } = await http.post<GenerateSyllabusTasksResponse>('/generate-syllabus-tasks', {
+      user_id: userId,
+      course_id: courseId,
+      syllabus_text: syllabusText,
+      months
+    });
+    return data.tasks;
+  } catch (error) {
+    console.error('Error generating syllabus tasks:', error);
+    throw error;
+  }
+}
+
+export interface SyllabusVerificationResponse {
+  found: boolean;
+  chunk_count: number;
+  sample_chunks: string[];
+  message: string;
+}
+
+export async function verifySyllabusInChromaDB(
+  userId: string,
+  courseId: string
+): Promise<SyllabusVerificationResponse> {
+  try {
+    const { data } = await http.get<SyllabusVerificationResponse>(`/verify-syllabus/${courseId}`, {
+      params: { user_id: userId }
+    });
+    return data;
+  } catch (error) {
+    console.error('Error verifying syllabus in ChromaDB:', error);
+    throw error;
+  }
+}
+
 

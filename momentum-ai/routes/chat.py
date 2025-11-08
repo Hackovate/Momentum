@@ -5,8 +5,7 @@ import traceback
 import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, HTTPException
-import numpy as np
-from models import ChatRequest, ChatResponse, ChatAction
+from models import ChatRequest, ChatResponse, ChatAction, GenerateSyllabusTasksRequest, GenerateSyllabusTasksResponse, SyllabusTask
 from database import collection
 from ai_client import call_gemini_generate, gemini_embedding
 from utils import retrieve_user_context, determine_optimal_k, determine_context_types, summarize_long_context, filter_syllabus_by_chapters
@@ -273,6 +272,7 @@ ACTIONS (include in Actions: JSON array):
 - add_assignment: {{"type":"add_assignment","data":{{"courseId":"..." OR "courseName":"...","title":"...","description":"..." (optional),"dueDate":"YYYY-MM-DD" (optional),"startDate":"YYYY-MM-DD" (optional),"estimatedHours":N (optional),"status":"pending|in_progress|completed" (optional, default "pending"),"points":N (optional),"examId":"..." (optional, link to exam if this is exam preparation task)}}}}
 - update_assignment: {{"type":"update_assignment","data":{{"assignment_id":"...","title":"...","description":"...","dueDate":"YYYY-MM-DD","startDate":"YYYY-MM-DD","estimatedHours":N,"status":"pending|in_progress|completed","points":N}}}}
 - delete_assignment: {{"type":"delete_assignment","data":{{"assignment_id":"..."}}}}
+- add_exam: {{"type":"add_exam","data":{{"courseId":"..." OR "courseName":"...","title":"..." (optional, default based on type),"date":"YYYY-MM-DD","type":"Midterm|Quiz|Final|Lab Final|Other" (optional, default "Midterm")}}}}
 
 SKILL CREATION RULES:
 - "I know X" → Simple: Create immediately with name, category, level only
@@ -408,9 +408,16 @@ HABIT RULES:
 
 EXAM PREPARATION TASK GENERATION:
 - When user mentions an exam (midterm, final, quiz) with date and chapters:
-  * Extract: exam date, course/subject name, chapters/topics to cover
-  * Use the Relevant Syllabus Content provided above to understand what needs to be studied
-  * Generate time-distributed preparation tasks:
+  * FIRST: Check if exam already exists in structured context for the same course and date
+    - Look in "Upcoming Exams" section of course info in context
+    - Match by course name and exam date (same day)
+  * If exam NOT found in context:
+    - Create add_exam action FIRST with:
+      - courseName: [course name from message]
+      - date: [exam date from message]
+      - type: [extract from message: "midterm" → "Midterm", "final" → "Final", "quiz" → "Quiz", etc.]
+      - title: [optional, can be inferred from type and course]
+  * Then generate time-distributed preparation tasks:
     - Break down chapters into study sessions
     - Distribute tasks across days leading up to exam date
     - Set appropriate due dates (e.g., "Study Chapter 1" due 5 days before exam)
@@ -423,9 +430,11 @@ EXAM PREPARATION TASK GENERATION:
     - dueDate: [calculated date before exam]
     - description: Brief description based on syllabus content
     - estimatedHours: Estimate based on chapter complexity (1-3 hours)
-    - examId: [if exam exists in context, link to it]
-  * IMPORTANT: All exam preparation tasks should have due dates BEFORE the exam date
-  * Spread tasks evenly: if 5 chapters and 7 days, do 1 chapter per day for 5 days, then review
+    - examId: [use exam ID from created/found exam - you'll need to reference it from the add_exam action]
+  * IMPORTANT: 
+    - All exam preparation tasks should have due dates BEFORE the exam date
+    - Spread tasks evenly: if 5 chapters and 7 days, do 1 chapter per day for 5 days, then review
+    - Always create the exam first if it doesn't exist, then link all tasks to it
 
 ANALYSIS MODE:
 - When user asks analysis questions (e.g., "How am I spending?", "How's my mood?", "Am I consistent with habits?"):
@@ -589,8 +598,14 @@ Assistant:"""
                 # Generate embeddings for all chunks at once (more efficient)
                 embeddings = gemini_embedding(chunks)
                 
-                # Convert embeddings to numpy arrays for ChromaDB type compatibility
-                embeddings_array = [np.array(emb) for emb in embeddings]
+                # ChromaDB expects List[List[float]], gemini_embedding already returns this format
+                # Ensure each embedding is a list (not numpy array)
+                embeddings_list = []
+                for emb in embeddings:
+                    if isinstance(emb, list):
+                        embeddings_list.append(emb)
+                    else:
+                        embeddings_list.append(list(emb))
                 
                 # Prepare metadata and IDs for all chunks
                 chunk_ids = []
@@ -613,18 +628,18 @@ Assistant:"""
                 collection.add(
                     documents=chunks,
                     ids=chunk_ids,
-                    embeddings=embeddings_array,
+                    embeddings=embeddings_list,
                     metadatas=chunk_metadatas
                 )
             else:
                 # Short conversation - store as single document
                 emb = gemini_embedding([conversation_text])[0]
-                # Convert embedding to numpy array for ChromaDB type compatibility
-                emb_array = np.array(emb)
+                # ChromaDB expects List[float], ensure it's a list (not numpy array)
+                emb_list = list(emb) if not isinstance(emb, list) else emb
                 collection.add(
                     documents=[conversation_text],
                     ids=[base_doc_id],
-                    embeddings=[emb_array],
+                    embeddings=[emb_list],
                     metadatas=[{
                         "user_id": req.user_id,
                         "type": "chat",
@@ -642,6 +657,109 @@ Assistant:"""
         
     except Exception as e:
         print(f"Chat error: {e}")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/generate-syllabus-tasks", response_model=GenerateSyllabusTasksResponse)
+async def generate_syllabus_tasks(req: GenerateSyllabusTasksRequest):
+    """
+    Generate time-distributed study tasks from syllabus content.
+    Distributes tasks evenly across the specified number of months.
+    """
+    try:
+        from datetime import datetime, timedelta
+        from ai_client import call_gemini_generate
+        from utils import retrieve_user_context
+        
+        # Get current date
+        current_date = datetime.now()
+        
+        # Calculate end date (months from now)
+        end_date = current_date + timedelta(days=req.months * 30)  # Approximate 30 days per month
+        
+        # Retrieve syllabus context from ChromaDB
+        syllabus_docs = retrieve_user_context(
+            req.user_id,
+            req.syllabus_text[:200],  # Use first 200 chars as query
+            k=10,
+            min_similarity=0.6,
+            allowed_types=["syllabus"],
+            deduplicate=True
+        )
+        
+        syllabus_context = "\n\n".join([d['text'] for d in syllabus_docs[:5]]) if syllabus_docs else req.syllabus_text
+        
+        # Build prompt for task generation
+        prompt = f"""Generate a {req.months}-month study plan based on the following syllabus.
+
+SYLLABUS CONTENT:
+{syllabus_context}
+
+REQUIREMENTS:
+- Generate study tasks distributed evenly across {req.months} months
+- Start date: {current_date.strftime('%Y-%m-%d')}
+- End date: {end_date.strftime('%Y-%m-%d')}
+- Each task should cover a specific topic, chapter, or learning objective
+- Tasks should progress logically (foundation → intermediate → advanced)
+- Include estimated hours for each task (1-4 hours per task)
+- Set appropriate due dates spread across the {req.months} months
+
+OUTPUT FORMAT (JSON array):
+[
+  {{
+    "title": "Task title",
+    "description": "Brief description of what to study",
+    "startDate": "YYYY-MM-DD",
+    "dueDate": "YYYY-MM-DD",
+    "estimatedHours": 2.0
+  }},
+  ...
+]
+
+Generate approximately {max(8, req.months * 4)} tasks to cover the syllabus comprehensively.
+Distribute them evenly across the {req.months} months.
+
+Return ONLY a valid JSON array, no other text."""
+
+        # Call Gemini to generate tasks
+        response_text = call_gemini_generate(prompt)
+        
+        # Parse JSON response
+        import json
+        # Extract JSON from response (handle markdown code blocks if present)
+        response_text = response_text.strip()
+        if response_text.startswith('```'):
+            # Remove markdown code block markers
+            lines = response_text.split('\n')
+            response_text = '\n'.join(lines[1:-1]) if lines[-1].startswith('```') else '\n'.join(lines[1:])
+        elif response_text.startswith('```json'):
+            lines = response_text.split('\n')
+            response_text = '\n'.join(lines[1:-1]) if lines[-1].startswith('```') else '\n'.join(lines[1:])
+        
+        tasks_data = json.loads(response_text)
+        
+        # Convert to SyllabusTask models
+        tasks = []
+        for task_data in tasks_data:
+            tasks.append(SyllabusTask(
+                title=task_data.get('title', 'Study Task'),
+                description=task_data.get('description'),
+                startDate=task_data.get('startDate'),
+                dueDate=task_data.get('dueDate'),
+                estimatedHours=task_data.get('estimatedHours')
+            ))
+        
+        return GenerateSyllabusTasksResponse(tasks=tasks)
+        
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error: {e}")
+        try:
+            print(f"Response text: {response_text[:500]}")
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Failed to parse AI response: {str(e)}")
+    except Exception as e:
+        print(f"Syllabus task generation error: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 

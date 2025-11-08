@@ -84,3 +84,20 @@ class ChatResponse(BaseModel):
     conversation_id: Optional[str] = None
     actions: Optional[List[ChatAction]] = []  # Actions AI wants to perform
 
+# Syllabus task generation models
+class GenerateSyllabusTasksRequest(BaseModel):
+    user_id: str
+    course_id: str
+    syllabus_text: str
+    months: int
+
+class SyllabusTask(BaseModel):
+    title: str
+    description: Optional[str] = None
+    startDate: Optional[str] = None
+    dueDate: Optional[str] = None
+    estimatedHours: Optional[float] = None
+
+class GenerateSyllabusTasksResponse(BaseModel):
+    tasks: List[SyllabusTask]
+

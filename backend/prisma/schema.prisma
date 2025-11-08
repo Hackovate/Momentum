@@ -8,24 +8,24 @@ datasource db {
 }
 
 model User {
-  id                String             @id @default(uuid())
-  email             String             @unique
-  password          String
-  firstName         String?
-  lastName          String?
-  
+  id        String  @id @default(uuid())
+  email     String  @unique
+  password  String
+  firstName String?
+  lastName  String?
+
   // Education level information (Bangladeshi context)
-  educationLevel    String?            // "school", "college", "university", "graduate"
-  institution       String?            // Name of school/college/university
-  class             String?            // For school: "6", "7", "8", "9", "10", "11", "12"
-  group             String?            // For school (9-12): "science", "commerce", "arts"
-                                       // For college: "science", "commerce", "arts"
-  year              Int?               // For college: 1, 2 | For university: 1, 2, 3, 4
-  major             String?            // For university: field of study
-  board             String?            // For school/college: "Dhaka", "Chittagong", "Rajshahi", etc.
-  expectedGraduation DateTime?         // Expected graduation date
-  unstructuredContext String?          @db.Text // User-editable unstructured context for AI
-  
+  educationLevel      String? // "school", "college", "university", "graduate"
+  institution         String? // Name of school/college/university
+  class               String? // For school: "6", "7", "8", "9", "10", "11", "12"
+  group               String? // For school (9-12): "science", "commerce", "arts"
+  // For college: "science", "commerce", "arts"
+  year                Int? // For college: 1, 2 | For university: 1, 2, 3, 4
+  major               String? // For university: field of study
+  board               String? // For school/college: "Dhaka", "Chittagong", "Rajshahi", etc.
+  expectedGraduation  DateTime? // Expected graduation date
+  unstructuredContext String?   @db.Text // User-editable unstructured context for AI
+
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   academics         Academic[]
@@ -67,131 +67,111 @@ model Academic {
 }
 
 model Course {
-  id            String          @id @default(uuid())
-  userId        String
-  courseName    String
-  courseCode    String?
-  description   String?
-  grade         String?
-  credits       Int?
-  semester      String?
-  year          Int?
-  status        String?         @default("ongoing")
-  progress      Int?             // 0-100
-  attendance    Float?           // percentage 0-100
-  syllabus      String?          // Syllabus text for AI context
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  classSchedule ClassSchedule[]
-  assignments   Assignment[]
-  exams         Exam[]
+  id                String             @id @default(uuid())
+  userId            String
+  courseName        String
+  courseCode        String?
+  description       String?
+  grade             String?
+  credits           Int?
+  semester          String?
+  year              Int?
+  status            String?            @default("ongoing")
+  progress          Int? // 0-100
+  attendance        Float? // percentage 0-100
+  syllabus          String? // Syllabus text for AI context
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  classSchedule     ClassSchedule[]
+  assignments       Assignment[]
+  exams             Exam[]
   attendanceRecords AttendanceRecord[]
 
   @@map("courses")
 }
 
 model ClassSchedule {
-  id        String   @id @default(uuid())
-  courseId  String
-  day       String   // Mon, Tue, etc.
-  time      String   // e.g. "09:00"
-  type      String?  // Lecture, Lab, Tutorial
-  location  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id                String             @id @default(uuid())
+  courseId          String
+  day               String // Mon, Tue, etc.
+  time              String // e.g. "09:00"
+  type              String? // Lecture, Lab, Tutorial
+  location          String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  course            Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
   attendanceRecords AttendanceRecord[]
 
   @@map("class_schedules")
 }
 
 model Assignment {
-  id             String    @id @default(uuid())
-  courseId       String
-  title          String
-  description    String?
-  startDate      DateTime?
-  dueDate        DateTime?
-  estimatedHours Float?
-  status         String    @default("pending")
-  points         Int?
-  aiGenerated    Boolean   @default(false) // Whether created by AI
-  examId         String?   // Link to exam for exam-based tasks
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  course         Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id                String    @id @default(uuid())
+  courseId          String
+  title             String
+  description       String?
+  startDate         DateTime?
+  dueDate           DateTime?
+  estimatedHours    Float?
+  status            String    @default("pending")
+  points            Int?
+  aiGenerated       Boolean   @default(false) // Whether created by AI
+  syllabusGenerated Boolean   @default(false) // Whether generated from syllabus
+  examId            String? // Link to exam for exam-based tasks
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  course            Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@map("assignments")
 }
 
 model Exam {
-  id          String   @id @default(uuid())
-  courseId    String
-  title       String?
-  date        DateTime
-  type        String?  // Midterm, Quiz, Final
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  courseId  String
+  title     String?
+  date      DateTime
+  type      String? // Midterm, Quiz, Final
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@map("exams")
 }
 
 model Finance {
-  id            String        @id @default(uuid())
-  userId        String
-  category      String
-  amount        Float
-  description   String?
-  date          DateTime      @default(now())
-  
+  id          String   @id @default(uuid())
+  userId      String
+  category    String
+  amount      Float
+  description String?
+  date        DateTime @default(now())
+
   // Enhanced fields for AI-ready finance tracking
-  type          String        @default("expense") // income or expense
-  paymentMethod String?       // cash, card, digital, bank_transfer, etc.
-  recurring     Boolean       @default(false)
-  frequency     String?       // weekly, monthly, yearly, quarterly
-  aiGenerated   Boolean       @default(false) // for AI-suggested transactions
-  goalId        String?       // link to savings goal
-  
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  savingsGoal   SavingsGoal?  @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  type          String  @default("expense") // income or expense
+  paymentMethod String? // cash, card, digital, bank_transfer, etc.
+  recurring     Boolean @default(false)
+  frequency     String? // weekly, monthly, yearly, quarterly
+  aiGenerated   Boolean @default(false) // for AI-suggested transactions
+  goalId        String? // link to savings goal
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  savingsGoal SavingsGoal? @relation(fields: [goalId], references: [id], onDelete: SetNull)
 
   @@map("finances")
 }
 
 model SavingsGoal {
-  id            String     @id @default(uuid())
-  userId        String
-  title         String
-  targetAmount  Float
-  currentAmount Float      @default(0)
-  category      String?    // emergency, vacation, education, investment, etc.
-  dueDate       DateTime?
-  progress      Float      @default(0) // 0-100 percentage
-  aiGenerated   Boolean    @default(false)
-  description   String?
-  priority      String?    @default("medium") // high, medium, low
-  status        String     @default("active") // active, completed, cancelled
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  finances      Finance[]
-
-  @@map("savings_goals")
-}
-
-model MonthlyBudget {
   id            String    @id @default(uuid())
   userId        String
   title         String
   targetAmount  Float
   currentAmount Float     @default(0)
-  category      String?   // general, food, housing, education, entertainment, etc.
-  month         Int       // 1-12
-  year          Int
+  category      String? // emergency, vacation, education, investment, etc.
+  dueDate       DateTime?
+  progress      Float     @default(0) // 0-100 percentage
   aiGenerated   Boolean   @default(false)
   description   String?
   priority      String?   @default("medium") // high, medium, low
@@ -199,6 +179,27 @@ model MonthlyBudget {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  finances      Finance[]
+
+  @@map("savings_goals")
+}
+
+model MonthlyBudget {
+  id            String   @id @default(uuid())
+  userId        String
+  title         String
+  targetAmount  Float
+  currentAmount Float    @default(0)
+  category      String? // general, food, housing, education, entertainment, etc.
+  month         Int // 1-12
+  year          Int
+  aiGenerated   Boolean  @default(false)
+  description   String?
+  priority      String?  @default("medium") // high, medium, low
+  status        String   @default("active") // active, completed, cancelled
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("monthly_budgets")
 }
@@ -222,13 +223,13 @@ model Habit {
   id                String   @id @default(uuid())
   userId            String
   name              String
-  target            String   // e.g., "30 minutes daily"
-  time              String   // e.g., "7:00 AM"
+  target            String // e.g., "30 minutes daily"
+  time              String // e.g., "7:00 AM"
   streak            Int      @default(0)
   completed         Boolean  @default(false)
-  color             String   // e.g., "from-blue-500 to-cyan-500"
-  icon              String   // emoji or icon identifier
-  completionHistory Json?    // Array of { date: string, completed: boolean }
+  color             String // e.g., "from-blue-500 to-cyan-500"
+  icon              String // emoji or icon identifier
+  completionHistory Json? // Array of { date: string, completed: boolean }
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -237,50 +238,50 @@ model Habit {
 }
 
 model Task {
-  id              String    @id @default(uuid())
-  userId          String
-  title           String
-  description     String?
-  type            String?   // "assignment", "study", "skill", "habit"
-  priority        String?   @default("medium")
-  estimatedMinutes Int?     // estimated time to complete
-  status          String    @default("pending")
-  dueDate         DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String    @id @default(uuid())
+  userId           String
+  title            String
+  description      String?
+  type             String? // "assignment", "study", "skill", "habit"
+  priority         String?   @default("medium")
+  estimatedMinutes Int? // estimated time to complete
+  status           String    @default("pending")
+  dueDate          DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("tasks")
 }
 
 model Skill {
-  id                 String              @id @default(uuid())
-  userId             String
-  name               String
-  category           String?
-  level              String?             @default("beginner")
-  description        String?
-  progress           Float               @default(0) // 0-100 percentage
-  gradient           String?             // Color gradient for UI
-  nextTask           String?             // Next recommended task
-  timeSpent          String?             @default("0h") // Total learning hours
-  resourceCount      Int                 @default(0) // Number of resources
-  certificateUrl     String?             // URL/path to certificate file
-  
+  id             String  @id @default(uuid())
+  userId         String
+  name           String
+  category       String?
+  level          String? @default("beginner")
+  description    String?
+  progress       Float   @default(0) // 0-100 percentage
+  gradient       String? // Color gradient for UI
+  nextTask       String? // Next recommended task
+  timeSpent      String? @default("0h") // Total learning hours
+  resourceCount  Int     @default(0) // Number of resources
+  certificateUrl String? // URL/path to certificate file
+
   // Enhanced fields for manual creation and AI generation
-  durationMonths     Int?                // Target duration in months
-  estimatedHours     Float?              // Total estimated learning hours
-  startDate          DateTime?           // Optional start date
-  endDate            DateTime?           // Optional end date
-  goalStatement      String?             // Short goal/summary statement
-  aiGenerated        Boolean             @default(false) // Whether created by AI
-  
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  milestones         Milestone[]
-  learningResources  LearningResource[]
-  aiRecommendations  AIRecommendation[]
+  durationMonths Int? // Target duration in months
+  estimatedHours Float? // Total estimated learning hours
+  startDate      DateTime? // Optional start date
+  endDate        DateTime? // Optional end date
+  goalStatement  String? // Short goal/summary statement
+  aiGenerated    Boolean   @default(false) // Whether created by AI
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones        Milestone[]
+  learningResources LearningResource[]
+  aiRecommendations AIRecommendation[]
 
   @@map("skills")
 }
@@ -305,9 +306,9 @@ model LearningResource {
   skillId     String
   userId      String
   title       String
-  type        String   // "link", "note", "file"
-  url         String?  // For links and files
-  content     String?  // For notes
+  type        String // "link", "note", "file"
+  url         String? // For links and files
+  content     String? // For notes
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -320,7 +321,7 @@ model LearningResource {
 model AIRecommendation {
   id            String   @id @default(uuid())
   userId        String
-  skillId       String?  // Optional - can be general recommendation
+  skillId       String? // Optional - can be general recommendation
   title         String
   priority      String   @default("medium") // "high", "medium", "low"
   estimatedTime String?
@@ -356,8 +357,8 @@ model AttendanceRecord {
   courseId        String
   userId          String
   classScheduleId String
-  date            DateTime      // The specific date this class occurred
-  status          String        // "present", "absent", "late"
+  date            DateTime // The specific date this class occurred
+  status          String // "present", "absent", "late"
   notes           String?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -370,42 +371,42 @@ model AttendanceRecord {
 }
 
 model AIMemory {
-  id         String   @id @default(uuid())
-  userId     String
-  type       String   // "syllabus", "note", "finance_summary", "chat"
-  chromaId   String   // The vector document ID in Chroma
-  metadata   Json?    // e.g., {"source": "onboarding", "topic": "finance"}
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  userId    String
+  type      String // "syllabus", "note", "finance_summary", "chat"
+  chromaId  String // The vector document ID in Chroma
+  metadata  Json? // e.g., {"source": "onboarding", "topic": "finance"}
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_memory")
 }
 
 model FinanceInsight {
-  id             String    @id @default(uuid())
-  userId         String
-  summary        String
+  id               String   @id @default(uuid())
+  userId           String
+  summary          String
   savingSuggestion String?
-  recommendations String[] // multiple advice points
-  month          Int?
-  year           Int?
-  createdAt      DateTime  @default(now())
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendations  String[] // multiple advice points
+  month            Int?
+  year             Int?
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("finance_insights")
 }
 
 model AIPlan {
-  id          String   @id @default(uuid())
-  userId      String
-  date        DateTime
-  planJson    Json     // full AI plan (schedule, suggestions)
-  summary     String?
-  source      String?  // "daily", "rebalance", etc.
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  userId    String
+  date      DateTime
+  planJson  Json // full AI plan (schedule, suggestions)
+  summary   String?
+  source    String? // "daily", "rebalance", etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("ai_plans")
 }
@@ -413,9 +414,9 @@ model AIPlan {
 model AIFeedback {
   id          String   @id @default(uuid())
   userId      String
-  relatedId   String?  // Task/Skill/FinanceGoal id
-  contextType String   // "task", "skill", "finance"
-  reward      Float    // e.g., 1.0 for done, 0.5 for partial
+  relatedId   String? // Task/Skill/FinanceGoal id
+  contextType String // "task", "skill", "finance"
+  reward      Float // e.g., 1.0 for done, 0.5 for partial
   notes       String?
   createdAt   DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -46,6 +46,130 @@ router.post('/', async (req: AuthRequest, res) => {
   }
 });
 
+// Syllabus endpoints (must come before /:id route to avoid route matching conflicts)
+router.put('/:id/syllabus', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { syllabus } = req.body;
+    
+    // Ensure ownership
+    const existing = await prisma.course.findUnique({ where: { id } });
+    if (!existing || existing.userId !== req.userId) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Update syllabus in database
+    const course = await prisma.course.update({
+      where: { id },
+      data: { syllabus: syllabus !== undefined ? syllabus : null }
+    });
+
+    // Sync to ChromaDB via AI service
+    const { syncSyllabusToChromaDB, deleteSyllabusFromChromaDB } = await import('../services/ai.service');
+    try {
+      if (syllabus && syllabus.trim()) {
+        await syncSyllabusToChromaDB(req.userId!, id, syllabus);
+      } else {
+        // Delete from ChromaDB if syllabus is empty
+        await deleteSyllabusFromChromaDB(req.userId!, id);
+      }
+    } catch (aiError) {
+      console.error('Error syncing syllabus to ChromaDB:', aiError);
+      // Continue even if ChromaDB sync fails - syllabus is saved in DB
+    }
+
+    res.json(course);
+  } catch (error) {
+    console.error('Error updating syllabus:', error);
+    res.status(500).json({ error: 'Error updating syllabus' });
+  }
+});
+
+router.delete('/:id/syllabus', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Ensure ownership
+    const existing = await prisma.course.findUnique({ where: { id } });
+    if (!existing || existing.userId !== req.userId) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Delete syllabus from database
+    const course = await prisma.course.update({
+      where: { id },
+      data: { syllabus: null }
+    });
+
+    // Delete from ChromaDB
+    const { deleteSyllabusFromChromaDB } = await import('../services/ai.service');
+    try {
+      await deleteSyllabusFromChromaDB(req.userId!, id);
+    } catch (aiError) {
+      console.error('Error deleting syllabus from ChromaDB:', aiError);
+      // Continue even if ChromaDB deletion fails
+    }
+
+    res.json({ message: 'Syllabus deleted', course });
+  } catch (error) {
+    console.error('Error deleting syllabus:', error);
+    res.status(500).json({ error: 'Error deleting syllabus' });
+  }
+});
+
+// Generate syllabus-based study plan
+router.post('/:id/syllabus/generate', async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { months } = req.body;
+    
+    // Ensure ownership
+    const existing = await prisma.course.findUnique({ where: { id } });
+    if (!existing || existing.userId !== req.userId) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    if (!existing.syllabus || !existing.syllabus.trim()) {
+      return res.status(400).json({ error: 'No syllabus found for this course' });
+    }
+
+    if (!months || months < 1 || months > 24) {
+      return res.status(400).json({ error: 'Invalid months value. Must be between 1 and 24' });
+    }
+
+    // Call AI service to generate tasks
+    const { generateSyllabusTasks } = await import('../services/ai.service');
+    const tasks = await generateSyllabusTasks(req.userId!, id, existing.syllabus, months);
+
+    // Create assignments from generated tasks
+    const assignments = [];
+    for (const task of tasks) {
+      const assignment = await prisma.assignment.create({
+        data: {
+          courseId: id,
+          title: task.title,
+          description: task.description || null,
+          startDate: task.startDate ? new Date(task.startDate) : null,
+          dueDate: task.dueDate ? new Date(task.dueDate) : null,
+          estimatedHours: task.estimatedHours || null,
+          status: 'pending',
+          aiGenerated: true,
+          syllabusGenerated: true,
+        }
+      });
+      assignments.push(assignment);
+    }
+
+    res.json({ 
+      message: `Generated ${assignments.length} tasks for ${months} month study plan`,
+      assignments 
+    });
+  } catch (error) {
+    console.error('Error generating syllabus tasks:', error);
+    res.status(500).json({ error: 'Error generating study plan' });
+  }
+});
+
 router.put('/:id', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
@@ -263,46 +387,8 @@ router.delete('/exams/:id', async (req: AuthRequest, res) => {
   }
 });
 
-// Syllabus endpoints
-router.put('/:id/syllabus', async (req: AuthRequest, res) => {
-  try {
-    const { id } = req.params;
-    const { syllabus } = req.body;
-    
-    // Ensure ownership
-    const existing = await prisma.course.findUnique({ where: { id } });
-    if (!existing || existing.userId !== req.userId) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
-
-    // Update syllabus in database
-    const course = await prisma.course.update({
-      where: { id },
-      data: { syllabus: syllabus || null }
-    });
-
-    // Sync to ChromaDB via AI service
-    const { syncSyllabusToChromaDB, deleteSyllabusFromChromaDB } = await import('../services/ai.service');
-    try {
-      if (syllabus && syllabus.trim()) {
-        await syncSyllabusToChromaDB(req.userId!, id, syllabus);
-      } else {
-        // Delete from ChromaDB if syllabus is empty
-        await deleteSyllabusFromChromaDB(req.userId!, id);
-      }
-    } catch (aiError) {
-      console.error('Error syncing syllabus to ChromaDB:', aiError);
-      // Continue even if ChromaDB sync fails - syllabus is saved in DB
-    }
-
-    res.json(course);
-  } catch (error) {
-    console.error('Error updating syllabus:', error);
-    res.status(500).json({ error: 'Error updating syllabus' });
-  }
-});
-
-router.delete('/:id/syllabus', async (req: AuthRequest, res) => {
+// Verify syllabus in ChromaDB
+router.get('/:id/syllabus/verify', async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     
@@ -312,25 +398,14 @@ router.delete('/:id/syllabus', async (req: AuthRequest, res) => {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    // Delete syllabus from database
-    const course = await prisma.course.update({
-      where: { id },
-      data: { syllabus: null }
-    });
+    // Call AI service to verify syllabus in ChromaDB
+    const { verifySyllabusInChromaDB } = await import('../services/ai.service');
+    const verification = await verifySyllabusInChromaDB(req.userId!, id);
 
-    // Delete from ChromaDB
-    const { deleteSyllabusFromChromaDB } = await import('../services/ai.service');
-    try {
-      await deleteSyllabusFromChromaDB(req.userId!, id);
-    } catch (aiError) {
-      console.error('Error deleting syllabus from ChromaDB:', aiError);
-      // Continue even if ChromaDB deletion fails
-    }
-
-    res.json({ message: 'Syllabus deleted', course });
+    res.json(verification);
   } catch (error) {
-    console.error('Error deleting syllabus:', error);
-    res.status(500).json({ error: 'Error deleting syllabus' });
+    console.error('Error verifying syllabus:', error);
+    res.status(500).json({ error: 'Error verifying syllabus in ChromaDB' });
   }
 });
 

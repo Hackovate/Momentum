@@ -6,7 +6,6 @@ from models import IngestRequest
 from database import collection
 from ai_client import gemini_embedding
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import numpy as np
 
 router = APIRouter()
 
@@ -65,13 +64,14 @@ def ingest(req: IngestRequest):
     if all_chunks:
         embeddings = gemini_embedding(all_chunks)
         
-        # Convert embeddings to numpy arrays for ChromaDB type compatibility
-        embeddings_array = [np.array(emb) for emb in embeddings]
+        # ChromaDB expects List[List[float]], gemini_embedding already returns this format
+        # Ensure each embedding is a list (not numpy array)
+        embeddings_list = [list(emb) if not isinstance(emb, list) else emb for emb in embeddings]
         
         # Batch add to ChromaDB (more efficient than individual adds)
         collection.add(
             documents=all_chunks,
-            embeddings=embeddings_array,
+            embeddings=embeddings_list,
             ids=all_ids,
             metadatas=all_metadatas
         )
@@ -162,5 +162,43 @@ def ingest_syllabus(req: IngestRequest):
         return ingest(req)
     except Exception as e:
         print(f"Error ingesting syllabus: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/verify-syllabus/{course_id}")
+def verify_syllabus_in_chromadb(course_id: str, user_id: str = Query(...)):
+    """
+    Verify if syllabus content exists in ChromaDB for a specific course.
+    Returns information about stored syllabus chunks.
+    """
+    try:
+        # Query ChromaDB for syllabus chunks for this course
+        results = collection.get(
+            where={
+                "$and": [
+                    {"user_id": user_id},
+                    {"type": "syllabus"},
+                    {"course_id": course_id}
+                ]
+            }
+        )
+        
+        if results and results['ids']:
+            # Get some sample content to verify
+            sample_docs = results['documents'][:3] if results['documents'] else []
+            return {
+                "found": True,
+                "chunk_count": len(results['ids']),
+                "sample_chunks": sample_docs,
+                "message": f"Found {len(results['ids'])} syllabus chunks in ChromaDB"
+            }
+        else:
+            return {
+                "found": False,
+                "chunk_count": 0,
+                "sample_chunks": [],
+                "message": "No syllabus chunks found in ChromaDB for this course"
+            }
+    except Exception as e:
+        print(f"Error verifying syllabus: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 

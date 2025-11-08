@@ -42,6 +42,7 @@ export function AssignmentDialog({
   });
 
   const [activeTab, setActiveTab] = useState('add');
+  const [activeSubTab, setActiveSubTab] = useState<'all' | 'exam-prep' | 'study-plan'>('all');
 
   useEffect(() => {
     // Reset form when dialog opens/closes
@@ -220,15 +221,50 @@ export function AssignmentDialog({
             </form>
           </TabsContent>
 
-          <TabsContent value="list" className="flex-1 overflow-y-auto mt-4">
-            {assignments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <p className="text-muted-foreground text-sm">No assignments yet</p>
-                <p className="text-muted-foreground text-xs mt-1">Create your first assignment in the "Add Assignment/Task" tab</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {assignments.map((assignment: any) => (
+          <TabsContent value="list" className="flex-1 overflow-y-auto mt-4 flex flex-col">
+            {/* Sub-tabs for filtering */}
+            <Tabs value={activeSubTab} onValueChange={(v) => setActiveSubTab(v as 'all' | 'exam-prep' | 'study-plan')} className="mb-4">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="exam-prep">Exam Prep</TabsTrigger>
+                <TabsTrigger value="study-plan">Study Plan</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {/* Filter assignments based on sub-tab */}
+            {(() => {
+              let filteredAssignments = assignments;
+              
+              if (activeSubTab === 'exam-prep') {
+                // Show assignments linked to exams
+                filteredAssignments = assignments.filter((a: any) => a.examId != null);
+              } else if (activeSubTab === 'study-plan') {
+                // Show syllabus-generated or AI-generated without examId
+                filteredAssignments = assignments.filter((a: any) => 
+                  a.syllabusGenerated === true || (a.aiGenerated === true && !a.examId)
+                );
+              }
+              
+              return filteredAssignments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <p className="text-muted-foreground text-sm">
+                    {activeSubTab === 'all' 
+                      ? 'No assignments yet'
+                      : activeSubTab === 'exam-prep'
+                      ? 'No exam preparation tasks yet'
+                      : 'No study plan tasks yet'}
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    {activeSubTab === 'all'
+                      ? 'Create your first assignment in the "Add Assignment/Task" tab'
+                      : activeSubTab === 'exam-prep'
+                      ? 'Exam prep tasks are created when you ask AI to prepare for an exam'
+                      : 'Study plan tasks are generated from syllabus or created via AI chat'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredAssignments.map((assignment: any) => (
                   <div
                     key={assignment.id}
                     className="rounded-lg border border-border/60 p-4 hover:bg-muted/50 transition-colors"
@@ -300,9 +336,10 @@ export function AssignmentDialog({
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              );
+            })()}
           </TabsContent>
         </Tabs>
       </DialogContent>

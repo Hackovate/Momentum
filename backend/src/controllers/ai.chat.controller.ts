@@ -641,6 +641,64 @@ export const chat = async (req: Request, res: Response) => {
             await prisma.assignment.delete({ where: { id: action.data.assignment_id } });
             console.log('Assignment deleted via AI:', action.data.assignment_id);
             actionResults.push({ type: action.type, success: true });
+          } else if (action.type === 'add_exam') {
+            // Find course by name or ID
+            let course;
+            if (action.data.courseId) {
+              course = await prisma.course.findFirst({
+                where: { id: action.data.courseId, userId }
+              });
+            } else if (action.data.courseName) {
+              course = await prisma.course.findFirst({
+                where: { 
+                  courseName: { contains: action.data.courseName, mode: 'insensitive' },
+                  userId 
+                }
+              });
+            }
+            if (!course) {
+              throw new Error(`Course not found: ${action.data.courseName || action.data.courseId}`);
+            }
+            
+            // Check if exam already exists for same course and date (within same day)
+            const examDate = action.data.date ? new Date(action.data.date) : null;
+            if (examDate) {
+              // Set to start of day for comparison
+              const startOfDay = new Date(examDate);
+              startOfDay.setHours(0, 0, 0, 0);
+              const endOfDay = new Date(examDate);
+              endOfDay.setHours(23, 59, 59, 999);
+              
+              const existingExam = await prisma.exam.findFirst({
+                where: {
+                  courseId: course.id,
+                  date: {
+                    gte: startOfDay,
+                    lte: endOfDay
+                  }
+                }
+              });
+              
+              if (existingExam) {
+                // Use existing exam
+                console.log('Using existing exam:', existingExam.id);
+                actionResults.push({ type: action.type, success: true, data: existingExam });
+              } else {
+                // Create new exam
+                const exam = await prisma.exam.create({
+                  data: {
+                    courseId: course.id,
+                    title: action.data.title || `${action.data.type || 'Exam'} - ${course.courseName}`,
+                    date: examDate,
+                    type: action.data.type || 'Midterm'
+                  }
+                });
+                console.log('Exam created via AI:', exam);
+                actionResults.push({ type: action.type, success: true, data: exam });
+              }
+            } else {
+              throw new Error('Exam date is required');
+            }
           } else if (action.type === 'add_skill') {
             console.log('Processing add_skill action:', JSON.stringify(action.data, null, 2));
             
