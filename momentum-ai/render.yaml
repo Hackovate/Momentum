@@ -2,6 +2,7 @@ services:
   - type: web
     name: momentum-ai-service
     env: python
+    rootDir: momentum-ai
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn ai_service:app --host 0.0.0.0 --port $PORT
     plan: free

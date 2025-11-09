@@ -55,12 +55,14 @@ Complete step-by-step guide to deploy Momentum application using free hosting se
    - **Environment**: `Node`
    - **Region**: Choose closest to you
    - **Branch**: `main` (or your default branch)
-   - **Root Directory**: `backend`
-   - **Build Command**: `npm install && npm run build`
+   - **Root Directory**: `backend` ⚠️ **CRITICAL: Must be set to `backend`**
+   - **Build Command**: `npm install && npx prisma generate && npm run build`
    - **Start Command**: `npm start`
    - **Plan**: **Free**
 
 6. Click **"Create Web Service"**
+
+**⚠️ IMPORTANT**: If you're using `render.yaml`, make sure it includes `rootDir: backend`. If the Root Directory is not set correctly, the build will fail with "Could not read package.json" error.
 
 ### Step 2: Set Environment Variables
 
@@ -88,16 +90,18 @@ After backend is deployed:
 2. Run:
    ```bash
    npx prisma migrate deploy
-   npx prisma generate
    ```
 
-Or run locally (if you have DATABASE_URL set):
+**Note**: `prisma generate` is already included in the build command, so Prisma client is generated automatically during deployment.
+
+Or run migrations locally (if you have DATABASE_URL set):
 ```bash
 cd backend
 export DATABASE_URL="postgresql://..." # Your Neon connection string
 npx prisma migrate deploy
-npx prisma generate
 ```
+
+**Important**: The `prisma` CLI is in `devDependencies` and is only needed during build. The Prisma client (`@prisma/client`) is in `dependencies` and is required at runtime.
 
 ### Step 4: Get Backend URL
 
@@ -122,12 +126,14 @@ npx prisma generate
    - **Environment**: `Python 3`
    - **Region**: Same as backend
    - **Branch**: `main` (or your default branch)
-   - **Root Directory**: `momentum-ai`
+   - **Root Directory**: `momentum-ai` ⚠️ **CRITICAL: Must be set to `momentum-ai`**
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `uvicorn ai_service:app --host 0.0.0.0 --port $PORT`
    - **Plan**: **Free**
 
 4. Click **"Create Web Service"**
+
+**⚠️ IMPORTANT**: If you're using `render.yaml`, make sure it includes `rootDir: momentum-ai`. If the Root Directory is not set correctly, the build will fail.
 
 ### Step 2: Set Environment Variables
 
