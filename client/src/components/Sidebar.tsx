@@ -32,10 +32,47 @@ export function Sidebar({ activeSection, onSectionChange, isMobileOpen = false, 
     return saved ? JSON.parse(saved) : false;
   });
 
+  const [sidebarBgColor, setSidebarBgColor] = useState(() => {
+    // Initialize with light mode color, will update on mount
+    if (typeof window !== 'undefined') {
+      const isDark = document.documentElement.classList.contains('dark');
+      return isDark ? '#1e293b' : '#e0f2fe';
+    }
+    return '#e0f2fe';
+  });
+
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed));
     onCollapseChange?.(isCollapsed);
   }, [isCollapsed, onCollapseChange]);
+
+  useEffect(() => {
+    // Update sidebar color and dark mode state when theme changes
+    const updateColor = () => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setSidebarBgColor(isDark ? '#1e293b' : '#e0f2fe');
+      setIsDarkMode(isDark);
+    };
+
+    // Check on mount
+    updateColor();
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateColor);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
@@ -70,12 +107,19 @@ export function Sidebar({ activeSection, onSectionChange, isMobileOpen = false, 
       )}
 
       {/* Sidebar */}
-      <div className={cn(
-        "h-screen bg-sidebar border-r border-sidebar-border flex flex-col fixed left-0 top-0 shadow-lg transition-all duration-300 z-50",
-        sidebarWidth,
-        "md:translate-x-0",
-        isMobileOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      <div 
+        className={cn(
+          "h-screen border-r border-sidebar-border flex flex-col fixed left-0 top-0 shadow-lg transition-all duration-300 z-50",
+          "backdrop-blur-none",
+          sidebarWidth,
+          "md:translate-x-0",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{ 
+          backgroundColor: sidebarBgColor,
+          opacity: 1
+        }}
+      >
         {/* Logo and Toggle Button */}
         <div className={cn(
           "border-b border-sidebar-border bg-card/50 flex items-center transition-all relative",
@@ -142,26 +186,39 @@ export function Sidebar({ activeSection, onSectionChange, isMobileOpen = false, 
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group",
                   isActive 
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary",
+                    ? "shadow-md" 
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                   isCollapsed && "justify-center"
                 )}
+                style={isActive ? {
+                  backgroundColor: isDarkMode ? '#0f172a' : '#1a202c',
+                  color: '#ffffff'
+                } : undefined}
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon className={cn(
-                  "w-5 h-5 transition-transform group-hover:scale-110 flex-shrink-0",
-                  isActive ? "text-primary-foreground" : "text-sidebar-foreground group-hover:text-sidebar-primary"
-                )} />
+                <Icon 
+                  className={cn(
+                    "w-5 h-5 transition-transform group-hover:scale-110 flex-shrink-0",
+                    !isActive && "text-sidebar-foreground group-hover:text-sidebar-foreground"
+                  )}
+                  style={isActive ? { color: '#ffffff' } : undefined}
+                />
                 {!isCollapsed && (
                   <>
-                    <span className={cn(
-                      "font-medium",
-                      isActive ? "text-primary-foreground" : "text-sidebar-foreground group-hover:text-sidebar-primary"
-                    )}>
+                    <span 
+                      className={cn(
+                        "font-medium",
+                        !isActive && "text-sidebar-foreground group-hover:text-sidebar-foreground"
+                      )}
+                      style={isActive ? { color: '#ffffff' } : undefined}
+                    >
                       {item.label}
                     </span>
                     {isActive && (
-                      <div className="ml-auto w-2 h-2 rounded-full bg-primary-foreground animate-pulse"></div>
+                      <div 
+                        className="ml-auto w-2 h-2 rounded-full animate-pulse"
+                        style={{ backgroundColor: '#ffffff' }}
+                      ></div>
                     )}
                   </>
                 )}

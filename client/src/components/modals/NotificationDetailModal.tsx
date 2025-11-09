@@ -54,17 +54,17 @@ export function NotificationDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
+        <DialogHeader className="px-6 pt-6 pb-4 flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             {getNotificationIcon(notification.type)}
             <span>Notification Details</span>
           </DialogTitle>
         </DialogHeader>
         
-        <div className="flex-1 flex flex-col min-h-0 mt-4">
+        <div className="flex-1 flex flex-col min-h-0 px-6 overflow-hidden">
           {/* Notification Info */}
-          <div className="space-y-3 mb-4 pb-4 border-b border-border">
+          <div className="space-y-3 mb-4 pb-4 border-b border-border flex-shrink-0">
             {notification.title && (
               <div>
                 <h3 className="text-sm font-semibold text-muted-foreground mb-1">Title</h3>
@@ -91,14 +91,14 @@ export function NotificationDetailModal({
           </div>
 
           {/* Message Content */}
-          <div className="flex-1 min-h-0 flex flex-col">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex-shrink-0">
               {isSummary ? (notification.source || 'Summary') : 'Message'}
             </h3>
-            <ScrollArea className="flex-1 pr-4">
-              <div className={`text-foreground ${isSummary ? 'prose prose-sm dark:prose-invert max-w-none' : ''}`}>
+            <ScrollArea className="flex-1 min-h-0">
+              <div className={`text-foreground pr-4 ${isSummary ? 'prose prose-sm dark:prose-invert max-w-none' : ''}`}>
                 {isSummary ? (
-                  <div className="whitespace-pre-wrap">
+                  <div className="whitespace-pre-wrap leading-relaxed">
                     {notification.message}
                   </div>
                 ) : (
@@ -109,7 +109,7 @@ export function NotificationDetailModal({
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 mt-6 pt-4 border-t border-border">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border flex-shrink-0">
           <Button onClick={onClose} variant="outline">
             Close
           </Button>
