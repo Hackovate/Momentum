@@ -7,6 +7,8 @@ import { NotificationProvider } from './lib/NotificationContext';
 import { Toaster } from './components/ui/sonner';
 import { Sidebar } from './components/Sidebar';
 import { TopNavbar } from './components/TopNavbar';
+import { InstallPrompt } from './components/InstallPrompt';
+import { cn } from './components/ui/utils';
 import { Dashboard } from './components/pages/Dashboard';
 import { PersonalizedAssistant } from './components/pages/PersonalizedAssistant';
 import { DailyPlanner } from './components/pages/DailyPlanner';
@@ -92,6 +94,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // Main App layout
 function MainLayout() {
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  const handleMobileToggle = () => {
+    setIsMobileOpen(!isMobileOpen);
+  };
+
+  const handleCollapseChange = (collapsed: boolean) => {
+    setIsSidebarCollapsed(collapsed);
+  };
 
   const renderContent = () => {
     switch (activeSection) {
@@ -121,15 +133,28 @@ function MainLayout() {
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar */}
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
+      <Sidebar 
+        activeSection={activeSection} 
+        onSectionChange={setActiveSection}
+        isMobileOpen={isMobileOpen}
+        onMobileToggle={handleMobileToggle}
+        onCollapseChange={handleCollapseChange}
+      />
       
       {/* Main Content Area */}
-      <div className="ml-64">
+      <div className={cn(
+        "transition-all duration-300",
+        "ml-0",
+        isSidebarCollapsed ? "md:ml-16" : "md:ml-64"
+      )}>
         {/* Top Navbar */}
-        <TopNavbar onNavigateToAssistant={() => setActiveSection('assistant')} />
+        <TopNavbar 
+          onNavigateToAssistant={() => setActiveSection('assistant')}
+          onMobileMenuToggle={handleMobileToggle}
+        />
         
         {/* Page Content */}
-        <main className="p-8">
+        <main className="p-4 md:p-8">
           {renderContent()}
         </main>
       </div>
@@ -185,6 +210,7 @@ export default function App() {
           <AppProvider>
             <AppContent />
             <Toaster />
+            <InstallPrompt />
           </AppProvider>
         </NotificationProvider>
       </AuthProvider>

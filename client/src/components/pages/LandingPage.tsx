@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   BookOpen, 
@@ -9,9 +9,7 @@ import {
   Wallet, 
   Brain, 
   CheckCircle2,
-  Star,
   ArrowRight,
-  Users,
   Zap,
   Shield,
   BarChart3,
@@ -19,7 +17,11 @@ import {
   Facebook,
   Twitter,
   Instagram,
-  Linkedin
+  Linkedin,
+  Menu,
+  X,
+  Check,
+  ArrowUp
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
@@ -34,13 +36,30 @@ import { Input } from '../ui/input';
 export function LandingPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'annual'>('monthly');
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
+      setMobileMenuOpen(false);
     }
   };
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Show/hide scroll to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const benefits = [
     {
@@ -93,70 +112,142 @@ export function LandingPage() {
     }
   ];
 
+  // Feature comparison data based on the feature gating table
+  const features = [
+    {
+      name: 'AI Daily Planner',
+      free: 'Limited (3/day)',
+      pro: 'Unlimited',
+      campus: 'Shared planning templates'
+    },
+    {
+      name: 'Academic Tracker',
+      free: 'Manual',
+      pro: 'Auto-schedule + reminders',
+      campus: 'Shared class tracking'
+    },
+    {
+      name: 'Academic Syllabus & Study Plan Generation',
+      free: 'Limited (1 time per account)',
+      pro: 'Unlimited',
+      campus: 'Shared templates'
+    },
+    {
+      name: 'AI Chat Assistant',
+      free: '10 messages/day',
+      pro: '100 messages/day (10x)',
+      campus: 'Unlimited + team chat'
+    },
+    {
+      name: 'Skill Development',
+      free: 'Limited (1 generation per account)',
+      pro: 'Unlimited AI generation',
+      campus: 'Group skill goals'
+    },
+    {
+      name: 'Expense Tracker',
+      free: 'Manual only',
+      pro: 'Auto-category',
+      campus: 'Shared budgets'
+    },
+    {
+      name: 'Habit Tracker',
+      free: '3 habits',
+      pro: 'Unlimited',
+      campus: 'Team wellness tracking'
+    },
+    {
+      name: 'Journal & Reflection',
+      free: 'Manual',
+      pro: 'AI summaries',
+      campus: 'Anonymous sentiment reports'
+    },
+    {
+      name: 'AI Summary Dashboard',
+      free: 'Daily summary only',
+      pro: 'Daily + Monthly summaries',
+      campus: 'Department-level insights'
+    },
+    {
+      name: 'Notification Summary',
+      free: null,
+      pro: 'Available',
+      campus: 'Team notifications'
+    },
+    {
+      name: 'Embeddings Personalization',
+      free: null,
+      pro: 'Basic',
+      campus: 'Shared embeddings for tutoring'
+    },
+    {
+      name: 'Integrations (Calendar, Notion, Google)',
+      free: null,
+      pro: 'Available',
+      campus: 'Org-level API'
+    },
+    {
+      name: 'PWA Support',
+      free: 'Available',
+      pro: 'Available',
+      campus: 'Available'
+    }
+  ];
+
+  // Calculate pricing
+  const getProPrice = () => {
+    if (billingPeriod === 'annual') {
+      const monthlyPrice = 5;
+      const annualPrice = monthlyPrice * 12;
+      const discount = annualPrice * 0.17;
+      return {
+        monthly: (annualPrice - discount) / 12,
+        annual: annualPrice - discount,
+        originalAnnual: annualPrice
+      };
+    } else {
+      return {
+        monthly: 5,
+        firstMonth: 3,
+        annual: null,
+        originalAnnual: null
+      };
+    }
+  };
+
+  const proPricing = getProPrice();
+
   const pricingPlans = [
     {
-      name: 'Starter',
+      name: 'Free',
       price: 'Free',
       period: 'forever',
-      features: [
-        'Basic task management',
-        'Academic tracking',
-        'Basic analytics',
-        'Community support'
-      ],
+      monthlyPrice: 0,
+      annualPrice: 0,
       cta: 'Get Started',
       popular: false
     },
     {
       name: 'Pro',
-      price: '$9.99',
-      period: 'month',
-      features: [
-        'Everything in Starter',
-        'AI-powered recommendations',
-        'Advanced analytics',
-        'Skill development tracking',
-        'Finance management',
-        'Priority support'
-      ],
+      price: billingPeriod === 'monthly' 
+        ? `$${proPricing.firstMonth} first month, then $${proPricing.monthly}/mo`
+        : `$${proPricing.monthly.toFixed(2)}/mo`,
+      period: billingPeriod === 'monthly' ? 'month' : 'year',
+      monthlyPrice: proPricing.monthly,
+      annualPrice: proPricing.annual,
+      originalAnnual: proPricing.originalAnnual,
+      firstMonth: proPricing.firstMonth,
       cta: 'Start Free Trial',
       popular: true
     },
     {
-      name: 'Advanced',
-      price: '$19.99',
-      period: 'month',
-      features: [
-        'Everything in Pro',
-        'Unlimited AI consultations',
-        'Custom integrations',
-        'Export & API access',
-        'Dedicated support',
-        'Early feature access'
-      ],
+      name: 'Campus',
+      price: 'Custom',
+      period: 'contact',
+      monthlyPrice: null,
+      annualPrice: null,
       cta: 'Contact Sales',
       popular: false
-    }
-  ];
-
-  const testimonials = [
-    {
-      name: 'Sarah Chen',
-      role: 'Computer Science Student',
-      rating: 5,
-      text: 'Momentum has completely transformed how I manage my studies. The AI recommendations are spot-on and help me stay organized.'
-    },
-    {
-      name: 'Michael Rodriguez',
-      role: 'Business Major',
-      rating: 5,
-      text: 'The finance tracking feature is a game-changer. I\'ve saved more money in 3 months than I did all last year!'
-    },
-    {
-      name: 'Emily Johnson',
-      role: 'Engineering Student',
-      rating: 5,
-      text: 'Best student productivity app I\'ve used. The analytics help me understand my patterns and improve every day.'
     }
   ];
 
@@ -191,11 +282,11 @@ export function LandingPage() {
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <div className="flex items-center gap-3">
-              <img src="/Full Logo.svg" alt="Momentum Logo" className="h-16 w-auto" />
+              <img src="/Full Logo.svg" alt="Momentum Logo" className="h-12 md:h-16 w-auto" />
             </div>
 
-            {/* Navigation Links */}
-            <div className="hidden md:flex items-center gap-8">
+            {/* Desktop Navigation Links */}
+            <div className="hidden md:flex items-center gap-6 lg:gap-8">
               <button 
                 onClick={() => scrollToSection('benefits')}
                 className="text-sm font-medium text-foreground hover:text-primary transition-colors"
@@ -207,12 +298,6 @@ export function LandingPage() {
                 className="text-sm font-medium text-foreground hover:text-primary transition-colors"
               >
                 How it works
-              </button>
-              <button 
-                onClick={() => scrollToSection('testimonials')}
-                className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-              >
-                Testimonials
               </button>
               <button 
                 onClick={() => scrollToSection('pricing')}
@@ -228,30 +313,78 @@ export function LandingPage() {
               </button>
             </div>
 
-            {/* CTA Button */}
-            <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
-              Get Started
-            </Button>
+            {/* Desktop CTA Button */}
+            <div className="hidden md:flex items-center gap-3">
+              <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary/90">
+                Get Started
+              </Button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="flex md:hidden items-center gap-2">
+              <Button 
+                onClick={() => navigate('/auth')} 
+                size="sm"
+                className="bg-primary hover:bg-primary/90 text-xs px-3"
+              >
+                Get Started
+              </Button>
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-lg hover:bg-muted transition-colors"
+                aria-label="Toggle menu"
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-5 h-5 text-foreground" />
+                ) : (
+                  <Menu className="w-5 h-5 text-foreground" />
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-border bg-background">
+              <div className="flex flex-col py-2">
+                <button 
+                  onClick={() => scrollToSection('benefits')}
+                  className="px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors text-left"
+                >
+                  Services
+                </button>
+                <button 
+                  onClick={() => scrollToSection('how-it-works')}
+                  className="px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors text-left"
+                >
+                  How it works
+                </button>
+                <button 
+                  onClick={() => scrollToSection('pricing')}
+                  className="px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors text-left"
+                >
+                  Pricing
+                </button>
+                <button 
+                  onClick={() => scrollToSection('faq')}
+                  className="px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors text-left"
+                >
+                  FAQ
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
       {/* Hero Area */}
-      <section className="container mx-auto px-4 py-20 md:py-32">
+      <section className="container mx-auto px-4 py-8 md:py-12 lg:py-16">
         <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-6 md:gap-8 items-center">
             {/* Left Side - Content */}
             <div>
-              {/* Social Proof */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6">
-                <Users className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">
-                  1200+ active students using Momentum
-                </span>
-              </div>
-
               {/* Title */}
-              <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 leading-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 md:mb-6 leading-tight">
                 Your Personal
                 <span className="block text-primary mt-2">
                   AI Student Assistant
@@ -259,7 +392,7 @@ export function LandingPage() {
               </h1>
 
               {/* Description */}
-              <p className="text-lg text-muted-foreground mb-8 max-w-xl">
+              <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8 max-w-xl">
                 Organize your academics, develop skills, manage finances, and boost productivity with 
                 intelligent AI-powered insights and personalized recommendations.
               </p>
@@ -284,14 +417,15 @@ export function LandingPage() {
               </div>
             </div>
 
-            {/* Right Side - Product Screenshot/Video Placeholder */}
+            {/* Right Side - Product Screenshot */}
             <div className="relative">
-              <div className="rounded-lg border border-border bg-card p-8 shadow-xl">
-                <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/5 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <Sparkles className="w-16 h-16 text-primary mx-auto mb-4" />
-                    <p className="text-sm text-muted-foreground">Product Screenshot</p>
-                  </div>
+              <div className="rounded-lg border border-border bg-card p-4 md:p-8 shadow-xl overflow-hidden">
+                <div className="rounded-lg overflow-hidden">
+                  <img 
+                    src="/dashbaordpng.png" 
+                    alt="Momentum Dashboard Screenshot" 
+                    className="w-full h-auto object-contain rounded-lg shadow-lg"
+                  />
                 </div>
               </div>
             </div>
@@ -299,35 +433,19 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Partners Section */}
-      <section className="container mx-auto px-4 py-12 border-y border-border">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-sm text-muted-foreground text-center mb-6">
-            Trusted by students at:
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-8 opacity-60">
-            {['Harvard', 'MIT', 'Stanford', 'UC Berkeley', 'NYU', 'Columbia', 'Yale', 'Princeton'].map((uni, i) => (
-              <div key={i} className="text-sm font-semibold text-muted-foreground">
-                {uni}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Benefits Section */}
-      <section id="benefits" className="container mx-auto px-4 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+      <section id="benefits" className="container mx-auto px-4 py-8 md:py-12">
+        <div className="text-center mb-6 md:mb-8">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 md:mb-4">
             Everything You Need to Succeed
           </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto px-4">
             Focus on how it helps you instead of what features it has
           </p>
         </div>
 
         {/* Bento Grid Layout */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-6xl mx-auto">
           {benefits.map((benefit, index) => {
             const Icon = benefit.icon;
             const isLarge = index === 0 || index === 3;
@@ -354,18 +472,18 @@ export function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section id="how-it-works" className="container mx-auto px-4 py-20 bg-muted/30">
+      <section id="how-it-works" className="container mx-auto px-4 py-8 md:py-12 bg-muted/30">
         <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-6 md:mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 md:mb-4">
               How it works?
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base md:text-lg text-muted-foreground">
               Get started with Momentum in 3 simple steps
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
             {howItWorks.map((step, index) => (
               <Card key={index} className="p-6 border-border bg-card text-center">
                 <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center mx-auto mb-4 text-xl font-bold">
@@ -384,23 +502,51 @@ export function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="container mx-auto px-4 py-20">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+      <section id="pricing" className="container mx-auto px-4 py-8 md:py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-6 md:mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 md:mb-4">
               Pricing - Why to buy / How it helps
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base md:text-lg text-muted-foreground px-4">
               Choose the plan that works best for you. All plans include our core features.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          {/* Billing Toggle */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            <span className={`text-sm font-medium ${billingPeriod === 'monthly' ? 'text-foreground' : 'text-muted-foreground'}`}>
+              Monthly
+            </span>
+            <button
+              onClick={() => setBillingPeriod(billingPeriod === 'monthly' ? 'annual' : 'monthly')}
+              className="relative inline-flex h-6 w-11 items-center rounded-full bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+              role="switch"
+              aria-checked={billingPeriod === 'annual'}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  billingPeriod === 'annual' ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+            <span className={`text-sm font-medium ${billingPeriod === 'annual' ? 'text-foreground' : 'text-muted-foreground'}`}>
+              Annual
+              {billingPeriod === 'annual' && (
+                <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                  17% OFF
+                </span>
+              )}
+            </span>
+          </div>
+
+          {/* Pricing Cards */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-12">
             {pricingPlans.map((plan, index) => (
               <Card 
                 key={index}
-                className={`p-8 border-border bg-card relative ${
-                  plan.popular ? 'border-2 border-primary shadow-lg' : ''
+                className={`p-6 md:p-8 border-border bg-card relative transition-all hover:shadow-lg ${
+                  plan.popular ? 'border-2 border-primary shadow-lg scale-105' : ''
                 }`}
               >
                 {plan.popular && (
@@ -412,78 +558,129 @@ export function LandingPage() {
                 )}
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-bold text-foreground mb-2">{plan.name}</h3>
-                  <div className="mb-4">
-                    <span className="text-4xl font-bold text-foreground">{plan.price}</span>
-                    {plan.period !== 'forever' && (
-                      <span className="text-muted-foreground">/{plan.period}</span>
+                  <div className="mb-2">
+                    {plan.price === 'Free' ? (
+                      <span className="text-4xl font-bold text-foreground">Free</span>
+                    ) : plan.price === 'Custom' ? (
+                      <span className="text-4xl font-bold text-foreground">Custom</span>
+                    ) : (
+                      <div>
+                        {billingPeriod === 'monthly' ? (
+                          <div>
+                            <div className="flex items-baseline gap-2 justify-center">
+                              <span className="text-2xl font-bold text-foreground">
+                                ${plan.firstMonth}
+                              </span>
+                              <span className="text-xl font-bold text-muted-foreground line-through">
+                                ${plan.monthlyPrice}
+                              </span>
+                              <span className="text-lg text-muted-foreground">first month</span>
+                            </div>
+                            <div className="text-sm text-muted-foreground mt-1">
+                              Then ${plan.monthlyPrice}/mo
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="flex items-baseline gap-2 justify-center">
+                              <span className="text-4xl font-bold text-foreground">
+                                ${plan.monthlyPrice.toFixed(2)}
+                              </span>
+                              <span className="text-2xl font-bold text-muted-foreground line-through">
+                                ${(plan.originalAnnual! / 12).toFixed(2)}
+                              </span>
+                              <span className="text-lg text-muted-foreground">/mo</span>
+                            </div>
+                            <div className="text-sm text-primary font-medium mt-1">
+                              ${plan.annualPrice?.toFixed(2)}/year billed annually
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                   <Button 
-                    className={`w-full ${
+                    className={`w-full mt-4 ${
                       plan.popular 
-                        ? 'bg-primary hover:bg-primary/90' 
-                        : 'bg-secondary hover:bg-secondary/80'
+                        ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
+                        : plan.name === 'Free'
+                        ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+                        : 'bg-primary hover:bg-primary/90 text-primary-foreground'
                     }`}
                     onClick={() => navigate('/auth')}
                   >
                     {plan.cta}
                   </Button>
                 </div>
-                <ul className="space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                      <span className="text-sm text-muted-foreground">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
               </Card>
             ))}
           </div>
-        </div>
-      </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="container mx-auto px-4 py-20 bg-muted/30">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Loved by students worldwide
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              See what students are saying about Momentum
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {testimonials.map((testimonial, index) => (
-              <Card key={index} className="p-6 border-border bg-card">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-muted-foreground mb-4 italic">
-                  "{testimonial.text}"
-                </p>
-                <div>
-                  <p className="font-semibold text-foreground">{testimonial.name}</p>
-                  <p className="text-sm text-muted-foreground">{testimonial.role}</p>
-                </div>
-              </Card>
-            ))}
+          {/* Feature Comparison Table */}
+          <div className="mt-12">
+            <h3 className="text-2xl font-bold text-foreground mb-6 text-center">
+              Feature Comparison
+            </h3>
+            <Card className="overflow-hidden border-border">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="text-left p-4 font-semibold text-foreground">Module</th>
+                      <th className="text-center p-4 font-semibold text-foreground">Free</th>
+                      <th className="text-center p-4 font-semibold text-foreground bg-primary/5">
+                        Pro
+                      </th>
+                      <th className="text-center p-4 font-semibold text-foreground">Campus</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {features.map((feature, index) => (
+                      <tr 
+                        key={index} 
+                        className="border-b border-border hover:bg-muted/20 transition-colors"
+                      >
+                        <td className="p-4 font-medium text-foreground">{feature.name}</td>
+                        <td className="p-4 text-center">
+                          {feature.free ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                              <span className="text-sm text-muted-foreground">{feature.free}</span>
+                            </div>
+                          ) : (
+                            <X className="w-5 h-5 text-destructive mx-auto" />
+                          )}
+                        </td>
+                        <td className="p-4 text-center bg-primary/5">
+                          <div className="flex items-center justify-center gap-2">
+                            <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            <span className="text-sm text-muted-foreground">{feature.pro}</span>
+                          </div>
+                        </td>
+                        <td className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
+                            <span className="text-sm text-muted-foreground">{feature.campus}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </div>
         </div>
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="container mx-auto px-4 py-20">
+      <section id="faq" className="container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+          <div className="text-center mb-6 md:mb-8">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 md:mb-4">
               Frequently Asked Questions
             </h2>
-            <p className="text-lg text-muted-foreground">
+            <p className="text-base md:text-lg text-muted-foreground px-4">
               Address some major questions to help people make the final call
             </p>
           </div>
@@ -504,12 +701,12 @@ export function LandingPage() {
       </section>
 
       {/* Bottom CTA Section */}
-      <section className="container mx-auto px-4 py-20">
-        <Card className="p-12 md:p-16 text-center border-border bg-primary/5 border-2 border-primary/20">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+      <section className="container mx-auto px-4 py-8 md:py-12">
+        <Card className="p-6 md:p-8 lg:p-10 text-center border-border bg-primary/5 border-2 border-primary/20">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground mb-3 md:mb-4">
             Ready to Transform Your Student Life?
           </h2>
-          <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-base md:text-lg text-muted-foreground mb-6 md:mb-8 max-w-2xl mx-auto px-4">
             Join thousands of students who are already using Momentum to achieve their goals
           </p>
           <Button 
@@ -524,8 +721,8 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="container mx-auto px-4 py-12 border-t border-border">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
+      <footer className="container mx-auto px-4 py-8 md:py-12 border-t border-border">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-8">
           {/* Logo and Description */}
           <div className="md:col-span-1">
             <img src="/Full Logo.svg" alt="Momentum Logo" className="h-16 w-auto mb-4" />
@@ -560,14 +757,6 @@ export function LandingPage() {
                   className="text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
                   Pricing
-                </button>
-              </li>
-              <li>
-                <button 
-                  onClick={() => scrollToSection('testimonials')}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
-                >
-                  Testimonials
                 </button>
               </li>
             </ul>
@@ -637,6 +826,17 @@ export function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 z-50 p-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all hover:scale-110"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 }

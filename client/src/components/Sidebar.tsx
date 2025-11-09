@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -9,16 +10,36 @@ import {
   BarChart3,
   Sparkles,
   User,
-  LogOut
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Menu,
+  X
 } from 'lucide-react';
 import { cn } from './ui/utils';
 
 interface SidebarProps {
   activeSection: string;
   onSectionChange: (section: string) => void;
+  isMobileOpen?: boolean;
+  onMobileToggle?: () => void;
+  onCollapseChange?: (isCollapsed: boolean) => void;
 }
 
-export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+export function Sidebar({ activeSection, onSectionChange, isMobileOpen = false, onMobileToggle, onCollapseChange }: SidebarProps) {
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const saved = localStorage.getItem('sidebarCollapsed');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', JSON.stringify(isCollapsed));
+    onCollapseChange?.(isCollapsed);
+  }, [isCollapsed, onCollapseChange]);
+
+  const toggleCollapse = () => {
+    setIsCollapsed(!isCollapsed);
+  };
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'assistant', label: 'Assistant', icon: Sparkles },
@@ -36,12 +57,74 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
     { id: 'logout', label: 'Logout', icon: LogOut },
   ];
 
+  const sidebarWidth = isCollapsed ? 'w-16' : 'w-64';
+
   return (
-    <div className="w-64 h-screen bg-sidebar border-r border-sidebar-border flex flex-col fixed left-0 top-0 shadow-lg">
-      {/* Logo */}
-      <div className="p-6 border-b border-sidebar-border bg-card/50 flex items-center justify-center">
-        <img src="/Full Logo.svg" alt="Momentum Logo" className="h-20 w-auto object-contain" />
-      </div>
+    <>
+      {/* Mobile Backdrop */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={onMobileToggle}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={cn(
+        "h-screen bg-sidebar border-r border-sidebar-border flex flex-col fixed left-0 top-0 shadow-lg transition-all duration-300 z-50",
+        sidebarWidth,
+        "md:translate-x-0",
+        isMobileOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        {/* Logo and Toggle Button */}
+        <div className={cn(
+          "border-b border-sidebar-border bg-card/50 flex items-center transition-all relative",
+          isCollapsed ? "p-4 justify-center" : "p-6 justify-between"
+        )}>
+          {isCollapsed ? (
+            <>
+              <img 
+                src="/Icon black.png" 
+                alt="Momentum Icon" 
+                className="h-8 w-8 object-contain transition-all dark:brightness-0 dark:invert" 
+              />
+              {/* Collapse toggle button when collapsed - positioned at bottom */}
+              <button
+                onClick={toggleCollapse}
+                className="absolute bottom-2 right-2 p-1 rounded-lg hover:bg-sidebar-accent/50 transition-colors hidden md:flex"
+                aria-label="Expand sidebar"
+              >
+                <ChevronRight className="w-4 h-4 text-sidebar-foreground" />
+              </button>
+            </>
+          ) : (
+            <>
+              <img 
+                src="/Full Logo.svg" 
+                alt="Momentum Logo" 
+                className="h-20 w-auto object-contain transition-all dark:brightness-0 dark:invert" 
+              />
+              <div className="flex items-center gap-2">
+                {/* Mobile Close Button */}
+                <button
+                  onClick={onMobileToggle}
+                  className="p-1.5 rounded-lg hover:bg-sidebar-accent/50 transition-colors md:hidden"
+                  aria-label="Close sidebar"
+                >
+                  <X className="w-5 h-5 text-sidebar-foreground" />
+                </button>
+                {/* Desktop Collapse Toggle */}
+                <button
+                  onClick={toggleCollapse}
+                  className="p-1.5 rounded-lg hover:bg-sidebar-accent/50 transition-colors hidden md:flex"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronLeft className="w-5 h-5 text-sidebar-foreground" />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
       {/* Menu Items */}
       <nav className="flex-1 p-4 overflow-y-auto">
@@ -52,26 +135,35 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
             return (
               <button
                 key={item.id}
-                onClick={() => onSectionChange(item.id)}
+                onClick={() => {
+                  onSectionChange(item.id);
+                  onMobileToggle?.();
+                }}
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group",
                   isActive 
                     ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary",
+                  isCollapsed && "justify-center"
                 )}
+                title={isCollapsed ? item.label : undefined}
               >
                 <Icon className={cn(
-                  "w-5 h-5 transition-transform group-hover:scale-110",
+                  "w-5 h-5 transition-transform group-hover:scale-110 flex-shrink-0",
                   isActive ? "text-primary-foreground" : "text-sidebar-foreground group-hover:text-sidebar-primary"
                 )} />
-                <span className={cn(
-                  "font-medium",
-                  isActive ? "text-primary-foreground" : "text-sidebar-foreground group-hover:text-sidebar-primary"
-                )}>
-                  {item.label}
-                </span>
-                {isActive && (
-                  <div className="ml-auto w-2 h-2 rounded-full bg-primary-foreground animate-pulse"></div>
+                {!isCollapsed && (
+                  <>
+                    <span className={cn(
+                      "font-medium",
+                      isActive ? "text-primary-foreground" : "text-sidebar-foreground group-hover:text-sidebar-primary"
+                    )}>
+                      {item.label}
+                    </span>
+                    {isActive && (
+                      <div className="ml-auto w-2 h-2 rounded-full bg-primary-foreground animate-pulse"></div>
+                    )}
+                  </>
                 )}
               </button>
             );
@@ -87,16 +179,26 @@ export function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
             return (
               <button
                 key={item.id}
-                onClick={() => onSectionChange(item.id)}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary transition-all duration-200 group"
+                onClick={() => {
+                  onSectionChange(item.id);
+                  onMobileToggle?.();
+                }}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-primary transition-all duration-200 group",
+                  isCollapsed && "justify-center"
+                )}
+                title={isCollapsed ? item.label : undefined}
               >
-                <Icon className="w-5 h-5 transition-transform group-hover:scale-110" />
-                <span className="text-sm font-medium group-hover:text-sidebar-primary">{item.label}</span>
+                <Icon className="w-5 h-5 transition-transform group-hover:scale-110 flex-shrink-0" />
+                {!isCollapsed && (
+                  <span className="text-sm font-medium group-hover:text-sidebar-primary">{item.label}</span>
+                )}
               </button>
             );
           })}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

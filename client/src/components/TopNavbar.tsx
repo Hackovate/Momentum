@@ -1,4 +1,4 @@
-import { Sparkles, ChevronDown, LogOut } from 'lucide-react';
+import { Sparkles, ChevronDown, LogOut, Menu } from 'lucide-react';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { Button } from './ui/button';
 import { ThemeToggle } from './theme-toggle';
@@ -15,9 +15,10 @@ import { NotificationDropdown } from './NotificationDropdown';
 
 interface TopNavbarProps {
   onNavigateToAssistant?: () => void;
+  onMobileMenuToggle?: () => void;
 }
 
-export function TopNavbar({ onNavigateToAssistant }: TopNavbarProps) {
+export function TopNavbar({ onNavigateToAssistant, onMobileMenuToggle }: TopNavbarProps) {
   const { user, logout } = useAuth();
   const today = new Date().toLocaleDateString('en-US', { 
     weekday: 'long', 
@@ -37,10 +38,18 @@ export function TopNavbar({ onNavigateToAssistant }: TopNavbarProps) {
   };
 
   return (
-    <div className="h-16 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 border-b border-border flex items-center justify-between px-6 sticky top-0 z-10 shadow-sm">
-      {/* Date Display */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-foreground">{today}</span>
+    <div className="h-16 bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60 border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 shadow-sm">
+      {/* Mobile Menu Button and Date Display */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onMobileMenuToggle}
+          className="p-2 rounded-lg hover:bg-muted transition-colors md:hidden"
+          aria-label="Toggle menu"
+        >
+          <Menu className="w-5 h-5 text-foreground" />
+        </button>
+        <span className="text-sm font-medium text-foreground hidden sm:inline">{today}</span>
+        <span className="text-xs font-medium text-foreground sm:hidden">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
       </div>
 
       {/* Right Actions */}

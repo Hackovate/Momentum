@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Sparkles, CheckCircle2, Circle, Clock, RefreshCw, BookOpen, Target, ListTodo } from 'lucide-react';
+import { Plus, Sparkles, CheckCircle2, Circle, Clock, RefreshCw, BookOpen, Target, ListTodo, Edit, Trash2 } from 'lucide-react';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '../ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -34,6 +35,8 @@ export function DailyPlanner() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [progressTask, setProgressTask] = useState<any>(null);
   const [newTask, setNewTask] = useState({
@@ -871,31 +874,43 @@ export function DailyPlanner() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteClick = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTaskToDelete(taskId);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleDeleteTask = async () => {
+    if (!taskToDelete) return;
     try {
-      await tasksAPI.delete(taskId);
+      await tasksAPI.delete(taskToDelete);
       const successMessage = 'Task deleted successfully!';
       toast.success(successMessage);
       addNotification('success', successMessage, 'DailyPlanner', 'task_deleted');
+      setIsDeleteDialogOpen(false);
+      setTaskToDelete(null);
       await loadAllTasks();
     } catch (error) {
       console.error('Error deleting task:', error);
       const errorMessage = 'Failed to delete task';
       toast.error(errorMessage);
       addNotification('error', errorMessage, 'DailyPlanner', 'task_delete_failed');
+      setIsDeleteDialogOpen(false);
+      setTaskToDelete(null);
     }
   };
 
-  const handleEditTask = (task: any) => {
+  const handleEditClick = (task: any, e: React.MouseEvent) => {
+    e.stopPropagation();
     setEditingTask(task);
     setNewTask({
       title: task.title || '',
       description: task.description || '',
       dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
       priority: (task.priority || 'medium') as 'high' | 'medium' | 'low',
-      estimatedHours: '',
-      daysAllocated: '',
-      startDate: '',
+      estimatedHours: task.estimatedMinutes ? (task.estimatedMinutes / 60).toString() : '',
+      daysAllocated: task.daysAllocated ? task.daysAllocated.toString() : '',
+      startDate: task.startDate ? new Date(task.startDate).toISOString().split('T')[0] : '',
     });
     setIsEditDialogOpen(true);
   };
@@ -915,7 +930,10 @@ export function DailyPlanner() {
         title: newTask.title,
         description: newTask.description || null,
         dueDate: newTask.dueDate || null,
+        startDate: newTask.startDate || null,
         priority: newTask.priority,
+        estimatedMinutes: newTask.estimatedHours ? parseFloat(newTask.estimatedHours) * 60 : null,
+        daysAllocated: newTask.daysAllocated ? parseInt(newTask.daysAllocated) : null,
       });
 
       setNewTask({ title: '', description: '', dueDate: '', priority: 'medium', estimatedHours: '', daysAllocated: '', startDate: '' });
@@ -1174,6 +1192,28 @@ export function DailyPlanner() {
                   )}
                 </div>
               </div>
+              
+              {/* Edit/Delete Actions for Personal Tasks */}
+              {task.source === 'personal' && task.type === 'task' && (
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  <button
+                    onClick={(e) => handleEditClick(task, e)}
+                    className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                    aria-label="Edit task"
+                    title="Edit task"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteClick(task.id, e)}
+                    className="p-1.5 rounded-lg hover:bg-destructive/10 transition-colors text-muted-foreground hover:text-destructive"
+                    aria-label="Delete task"
+                    title="Delete task"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           );
         })
@@ -1530,14 +1570,93 @@ export function DailyPlanner() {
                     rows={3}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="edit-dueDate">Due Date</Label>
-                  <Input
-                    id="edit-dueDate"
-                    type="date"
-                    value={newTask.dueDate}
-                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="edit-startDate">Start Date</Label>
+                    <Input
+                      id="edit-startDate"
+                      type="date"
+                      value={newTask.startDate}
+                      onChange={(e) => {
+                        setNewTask({ ...newTask, startDate: e.target.value });
+                        // Auto-calculate days if both dates are set
+                        if (e.target.value && newTask.dueDate) {
+                          const start = new Date(e.target.value);
+                          const due = new Date(newTask.dueDate);
+                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                            const diffTime = due.getTime() - start.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            setNewTask({ ...newTask, startDate: e.target.value, daysAllocated: diffDays.toString() });
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-dueDate">Due Date</Label>
+                    <Input
+                      id="edit-dueDate"
+                      type="date"
+                      value={newTask.dueDate}
+                      onChange={(e) => {
+                        setNewTask({ ...newTask, dueDate: e.target.value });
+                        // Auto-calculate days if both dates are set
+                        if (newTask.startDate && e.target.value) {
+                          const start = new Date(newTask.startDate);
+                          const due = new Date(e.target.value);
+                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                            const diffTime = due.getTime() - start.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            setNewTask({ ...newTask, dueDate: e.target.value, daysAllocated: diffDays.toString() });
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="edit-estimatedHours">Estimated Hours</Label>
+                    <Input
+                      id="edit-estimatedHours"
+                      type="number"
+                      min="0"
+                      step="0.5"
+                      placeholder="e.g., 5"
+                      value={newTask.estimatedHours}
+                      onChange={(e) => setNewTask({ ...newTask, estimatedHours: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-daysAllocated">
+                      Days Allocated
+                      {newTask.startDate && newTask.dueDate && (
+                        <span className="text-xs text-muted-foreground ml-1">(auto)</span>
+                      )}
+                    </Label>
+                    <Input
+                      id="edit-daysAllocated"
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="Auto from dates"
+                      value={(() => {
+                        // Auto-calculate if both dates are present
+                        if (newTask.startDate && newTask.dueDate) {
+                          const start = new Date(newTask.startDate);
+                          const due = new Date(newTask.dueDate);
+                          if (!isNaN(start.getTime()) && !isNaN(due.getTime()) && due >= start) {
+                            const diffTime = due.getTime() - start.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                            return diffDays > 0 ? diffDays.toString() : '';
+                          }
+                        }
+                        return newTask.daysAllocated;
+                      })()}
+                      onChange={(e) => setNewTask({ ...newTask, daysAllocated: e.target.value })}
+                      disabled={!!(newTask.startDate && newTask.dueDate)}
+                    />
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="edit-priority">Priority</Label>
@@ -1602,6 +1721,32 @@ export function DailyPlanner() {
           onSave={handleSaveProgress}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Task</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this task? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setIsDeleteDialogOpen(false);
+              setTaskToDelete(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteTask}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

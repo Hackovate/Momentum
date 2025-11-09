@@ -1,0 +1,19 @@
+{
+  "name": "Momentum - AI Student Life Dashboard",
+  "short_name": "Momentum",
+  "description": "Your personal AI student assistant for academics, skills, and productivity",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/Icon black.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
