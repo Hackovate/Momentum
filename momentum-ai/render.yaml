@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: momentum-ai-service
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn ai_service:app --host 0.0.0.0 --port $PORT
+    plan: free
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: VECTOR_DIR
+        value: /opt/render/project/src/chroma_db
+      - key: CORS_ORIGINS
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: TEMPERATURE
+        value: "0.1"
+

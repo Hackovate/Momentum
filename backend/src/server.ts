@@ -75,8 +75,11 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Allow embedding if needed
 }));
 
+// CORS configuration - prioritize CLIENT_URL, fallback to VERCEL_URL or localhost
+const corsOrigin = clientUrl || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5173');
+
 app.use(cors({
-  origin: clientUrl || 'http://localhost:5173',
+  origin: corsOrigin,
   credentials: true
 }));
 
